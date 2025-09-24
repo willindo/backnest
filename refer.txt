@@ -1,0 +1,78 @@
+ ls -a ~/
+cat << 'EOF' >> ~/.zshrc
+content 
+EOF
+badsha@badsha-VirtualBox:~/dev/payment$ cat reserve.txt
+🔮
+{
+  "Registered Name": "Razorpay Software Limited",
+  "CIN": "U72200KA2013PLC097389",
+  "PAN": "AAGCR4375J",
+  "TAN": "BLRR14773D"
+}
+FRONTEND_URL=http://10.0.2.15:3000
+1. Service Names
+App (NestJS) → payment-api
+Database → payment-db
+Admin (pgAdmin) → payment-pgadmin
+2. Ports
+NestJS inside container → 3000
+Expose outside (host) → 3002
+Postgres inside container → 5432
+Expose outside (host) → 5432 (ok since only one DB running)
+pgAdmin inside container → 80
+Expose outside (host) → 5050
+
+docker compose down -v --remove-orphans
+docker compose build --no-cache
+docker compose up -d
+docker compose logs -f payment-api
+
+docker compose exec payment-api npx prisma migrate dev
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+docker exec -it payment-service npx nest info
+docker compose restart payment
+docker compose up -d payment-db payment-pgadmin
+
+
+ find ~/dev/payment -type f -name "*.module.ts" \
+   -not -path "*/node_modules/*" \
+   -not -path "*/dist/*" \
+   -not -path "*/.next/*" \
+   -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+// tree -I 'node_modules|dist|.next|*.tsbuildinfo|*.log' -a ~/dev/payment/apps/api
+
+find ~/dev/payment -type f \( -name "*.controller.ts" -o -name "*.service.ts" -o -name "*.module.ts" \) \
+  -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+  
+find /home/badsha/dev/reload-ops/apps/frontend/pages/api \
+     /home/badsha/dev/reload-ops/apps/frontend/pages/auth \
+     /home/badsha/dev/reload-ops/apps/frontend/lib \
+     /home/badsha/dev/reload-ops/apps/frontend/context \
+     -type f -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+
+-type f \( -name "*.controller.ts" -o -name "*.service.ts" -o -name "*.module.ts" \)
+find ~/dev/reload-ops/apps/frontend \
+  -not -path "*/node_modules/*" \
+  -not -path "*/dist/*" \
+  -not -path "*/.next/*" \
+  -not -path "*/styles/*" \
+  -not -name "package.*" \
+  -not -name "*.json" \
+  -not -name "*config.js" \
+  -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+
+find ~/dev/reload-ops/apps/frontend  \
+  -not -path "*/node_modules/*" \
+   -not -path "*/dist/*" \
+   -not -path "*/.next/*" \
+   -not -path "*/styles/* \
+  -exec sh -c 'echo "==== {} ===="; cat "{}"; echo' \;
+
+docker compose exec payment-api npx prisma migrate deploy
+docker compose exec payment-api npx prisma migrate reset
+docker compose exec payment-db psql -U postgres -d payment_db -c '\dt'
+badsha@badsha-VirtualBox:~/dev/payment$ 
