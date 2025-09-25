@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: mono-commerce-backend
+    name: backnest
     env: node
     region: frankfurt # or oregon / singapore (pick nearest)
     plan: free
@@ -10,9 +10,9 @@ services:
       - key: DATABASE_URL
         fromService:
           type: postgres
-          name: mono-commerce-db
+          name: mono_commerce
           property: connectionString
 
 databases:
-  - name: mono-commerce-db
+  - name: setupnest
     plan: free
