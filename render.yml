@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: mono-commerce-backend
+    env: node
+    region: frankfurt # or oregon / singapore (pick nearest)
+    plan: free
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm run start:prod"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: postgres
+          name: mono-commerce-db
+          property: connectionString
+
+databases:
+  - name: mono-commerce-db
+    plan: free
