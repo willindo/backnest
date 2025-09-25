@@ -2,15 +2,15 @@ services:
   - type: web
     name: backnest
     env: node
-    region: frankfurt # or oregon / singapore (pick nearest)
+    region: frankfurt
     plan: free
-    buildCommand: "npm install && npx run build"
-    startCommand: "npm run start:prod"
+    buildCommand: "npm install && npx nest build"
+    startCommand: "npm run prestart && node dist/main.js"
     envVars:
       - key: DATABASE_URL
         fromService:
           type: postgres
-          name: mono_commerce
+          name: setupnest # 👈 must match your DB service name
           property: connectionString
 
 databases:
