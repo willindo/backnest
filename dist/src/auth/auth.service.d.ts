@@ -4,21 +4,21 @@ export declare class AuthService {
     constructor(prisma: PrismaService);
     register(email: string, password: string, name?: string): Promise<{
         id: string;
+        createdAt: Date;
+        name: string | null;
+        updatedAt: Date;
         email: string;
         password: string;
-        name: string | null;
         role: import(".prisma/client").$Enums.Role;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     validateUser(email: string, password: string): Promise<{
         id: string;
+        createdAt: Date;
+        name: string | null;
+        updatedAt: Date;
         email: string;
         password: string;
-        name: string | null;
         role: import(".prisma/client").$Enums.Role;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     login(user: any): Promise<{
         message: string;

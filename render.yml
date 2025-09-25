@@ -4,8 +4,8 @@ services:
     env: node
     region: frankfurt
     plan: free
-    buildCommand: "npm install && npx nest build"
-    startCommand: "npm run prestart && node dist/main.js"
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm run prestart && npm run start:prod"
     envVars:
       - key: DATABASE_URL
         fromService:
