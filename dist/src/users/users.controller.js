@@ -14,29 +14,41 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
+const users_service_1 = require("./users.service");
 const dto_1 = require("./dto");
 let UsersController = class UsersController {
-    findAll() {
-        return 'Get all users';
+    constructor(usersService) {
+        this.usersService = usersService;
+    }
+    findAll(page = '1', limit = '20', role) {
+        let roleUnion;
+        if (role === 'ADMIN')
+            roleUnion = 'ADMIN';
+        else if (role === 'CUSTOMER')
+            roleUnion = 'CUSTOMER';
+        return this.usersService.findAll(+page, +limit, roleUnion);
     }
     findOne(id) {
-        return `Get user ${id}`;
+        return this.usersService.findOne(id);
     }
     create(dto) {
-        return `Create user: ${dto.email}`;
+        return this.usersService.create(dto);
     }
     update(id, dto) {
-        return `Update user ${id}`;
+        return this.usersService.update(id, dto);
     }
     remove(id) {
-        return `Delete user ${id}`;
+        return this.usersService.remove(id);
     }
 };
 exports.UsersController = UsersController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('role')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "findAll", null);
 __decorate([
@@ -69,6 +81,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "remove", null);
 exports.UsersController = UsersController = __decorate([
-    (0, common_1.Controller)('users')
+    (0, common_1.Controller)('users'),
+    __metadata("design:paramtypes", [users_service_1.UsersService])
 ], UsersController);
 //# sourceMappingURL=users.controller.js.map

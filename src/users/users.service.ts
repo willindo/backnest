@@ -14,7 +14,11 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   // 🔹 GET /users with pagination & optional role filter
-  async findAll(page = 1, limit = 20, role?: 'ADMIN' | 'CUSTOMER') {
+  async findAll(
+    page = 1,
+    limit = 20,
+    role?: 'ADMIN' | 'CUSTOMER', // now matches mapped type
+  ) {
     const skip = (page - 1) * limit;
 
     const [data, total] = await this.prisma.$transaction([

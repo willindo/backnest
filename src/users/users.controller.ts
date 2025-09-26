@@ -20,9 +20,14 @@ export class UsersController {
   findAll(
     @Query('page') page = '1',
     @Query('limit') limit = '20',
-    @Query('role') role?: 'ADMIN' | 'CUSTOMER',
+    @Query('role') role?: string, // string from query
   ) {
-    return this.usersService.findAll(+page, +limit, role);
+    // map string to union type
+    let roleUnion: 'ADMIN' | 'CUSTOMER' | undefined;
+    if (role === 'ADMIN') roleUnion = 'ADMIN';
+    else if (role === 'CUSTOMER') roleUnion = 'CUSTOMER';
+
+    return this.usersService.findAll(+page, +limit, roleUnion);
   }
 
   @Get(':id')

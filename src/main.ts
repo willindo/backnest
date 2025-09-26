@@ -9,6 +9,6 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL || 'front-commerce-rust.vercel.app',
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0'); // 👈 important
+  await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important
 }
 bootstrap();

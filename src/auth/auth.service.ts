@@ -11,14 +11,17 @@ export class AuthService {
   constructor(private prisma: PrismaService) {}
 
   async register(email: string, password: string, name?: string) {
-    // Check if user already exists
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new ConflictException('Email already registered');
 
     const hashed = await bcrypt.hash(password, 10);
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: { email, password: hashed, name },
     });
+
+    // ✅ strip password
+    const { password: _pw, ...rest } = user;
+    return rest;
   }
 
   async validateUser(email: string, password: string) {
@@ -31,9 +34,13 @@ export class AuthService {
     return user;
   }
 
-  // Placeholder for JWT token generation
   async login(user: any) {
-    // TODO: generate JWT token here
-    return { message: 'Login successful', user };
+    // ✅ strip password
+    const { password, ...safeUser } = user;
+    return {
+      message: 'Login successful',
+      user: safeUser,
+      // TODO: later -> add accessToken
+    };
   }
 }

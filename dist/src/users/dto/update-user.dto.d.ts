@@ -1,6 +1,6 @@
+import { Role } from '@prisma/client';
 export declare class UpdateUserDto {
-    email?: string;
-    password?: string;
     name?: string;
-    role?: 'ADMIN' | 'CUSTOMER';
+    password?: string;
+    role?: Role;
 }

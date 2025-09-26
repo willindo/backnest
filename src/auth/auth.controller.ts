@@ -14,6 +14,6 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto) {
     const user = await this.auth.validateUser(dto.email, dto.password);
-    return this.auth.login(user); // placeholder for JWT token
+    return this.auth.login(user);
   }
 }

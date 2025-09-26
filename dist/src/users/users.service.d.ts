@@ -4,49 +4,49 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export declare class UsersService {
     private prisma;
     constructor(prisma: PrismaService);
-    findAll(): import(".prisma/client").Prisma.PrismaPromise<{
+    findAll(page?: number, limit?: number, role?: 'ADMIN' | 'CUSTOMER'): Promise<{
+        data: {
+            id: string;
+            email: string;
+            name: string | null;
+            role: import(".prisma/client").$Enums.Role;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        total: number;
+        page: number;
+        limit: number;
+    }>;
+    findOne(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        name: string | null;
-        updatedAt: Date;
         email: string;
-        password: string;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
-    }[]>;
-    findOne(id: string): import(".prisma/client").Prisma.Prisma__UserClient<{
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    create(dto: CreateUserDto): Promise<{
         id: string;
-        createdAt: Date;
-        name: string | null;
-        updatedAt: Date;
         email: string;
-        password: string;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
-    } | null, null, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
-    create(dto: CreateUserDto): import(".prisma/client").Prisma.Prisma__UserClient<{
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    update(id: string, dto: UpdateUserDto): Promise<{
         id: string;
-        createdAt: Date;
-        name: string | null;
-        updatedAt: Date;
         email: string;
-        password: string;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
-    }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
-    update(id: string, dto: UpdateUserDto): import(".prisma/client").Prisma.Prisma__UserClient<{
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        name: string | null;
-        updatedAt: Date;
         email: string;
-        password: string;
-        role: import(".prisma/client").$Enums.Role;
-    }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
-    remove(id: string): import(".prisma/client").Prisma.Prisma__UserClient<{
-        id: string;
-        createdAt: Date;
         name: string | null;
-        updatedAt: Date;
-        email: string;
-        password: string;
         role: import(".prisma/client").$Enums.Role;
-    }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
 }

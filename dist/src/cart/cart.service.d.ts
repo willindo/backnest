@@ -9,8 +9,8 @@ export declare class CartService {
             product: {
                 id: string;
                 createdAt: Date;
-                name: string;
                 updatedAt: Date;
+                name: string;
                 description: string | null;
                 price: number;
                 stock: number;

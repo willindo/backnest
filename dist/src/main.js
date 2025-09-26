@@ -7,7 +7,11 @@ async function bootstrap() {
     var _a;
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, transform: true }));
-    await app.listen((_a = process.env.PORT) !== null && _a !== void 0 ? _a : 3000, '0.0.0.0');
+    app.enableCors({
+        origin: process.env.FRONTEND_URL || 'front-commerce-rust.vercel.app',
+        credentials: true,
+    });
+    await app.listen((_a = process.env.PORT) !== null && _a !== void 0 ? _a : 3001, '0.0.0.0');
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

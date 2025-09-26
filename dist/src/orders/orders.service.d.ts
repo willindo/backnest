@@ -7,8 +7,8 @@ export declare class OrdersService {
             product: {
                 id: string;
                 createdAt: Date;
-                name: string;
                 updatedAt: Date;
+                name: string;
                 description: string | null;
                 price: number;
                 stock: number;
@@ -26,14 +26,15 @@ export declare class OrdersService {
         total: number;
         status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
+        updatedAt: Date;
     })[]>;
     findOne(id: string): import(".prisma/client").Prisma.Prisma__OrderClient<({
         items: ({
             product: {
                 id: string;
                 createdAt: Date;
-                name: string;
                 updatedAt: Date;
+                name: string;
                 description: string | null;
                 price: number;
                 stock: number;
@@ -51,14 +52,15 @@ export declare class OrdersService {
         total: number;
         status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
+        updatedAt: Date;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
     checkout(userId: string): Promise<{
         items: ({
             product: {
                 id: string;
                 createdAt: Date;
-                name: string;
                 updatedAt: Date;
+                name: string;
                 description: string | null;
                 price: number;
                 stock: number;
@@ -76,5 +78,6 @@ export declare class OrdersService {
         total: number;
         status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
+        updatedAt: Date;
     }>;
 }

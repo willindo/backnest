@@ -7,8 +7,8 @@ export declare class ProductsService {
     findAll(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
+        name: string;
         description: string | null;
         price: number;
         stock: number;
@@ -16,8 +16,8 @@ export declare class ProductsService {
     findOne(id: string): import(".prisma/client").Prisma.Prisma__ProductClient<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
+        name: string;
         description: string | null;
         price: number;
         stock: number;
@@ -25,8 +25,8 @@ export declare class ProductsService {
     create(dto: CreateProductDto): import(".prisma/client").Prisma.Prisma__ProductClient<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
+        name: string;
         description: string | null;
         price: number;
         stock: number;
@@ -34,8 +34,8 @@ export declare class ProductsService {
     update(id: string, dto: UpdateProductDto): import(".prisma/client").Prisma.Prisma__ProductClient<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
+        name: string;
         description: string | null;
         price: number;
         stock: number;
@@ -43,8 +43,8 @@ export declare class ProductsService {
     remove(id: string): import(".prisma/client").Prisma.Prisma__ProductClient<{
         id: string;
         createdAt: Date;
-        name: string;
         updatedAt: Date;
+        name: string;
         description: string | null;
         price: number;
         stock: number;
