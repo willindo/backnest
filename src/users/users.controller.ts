@@ -1,30 +1,47 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 
 @Controller('users')
 export class UsersController {
+  constructor(private usersService: UsersService) {}
+
+  // ✅ GET /users?page=1&limit=20&role=ADMIN
   @Get()
-  findAll() {
-    return 'Get all users';
+  findAll(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('role') role?: 'ADMIN' | 'CUSTOMER',
+  ) {
+    return this.usersService.findAll(+page, +limit, role);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return `Get user ${id}`;
+    return this.usersService.findOne(id);
   }
 
   @Post()
   create(@Body() dto: CreateUserDto) {
-    return `Create user: ${dto.email}`;
+    return this.usersService.create(dto);
   }
 
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return `Update user ${id}`;
+    return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return `Delete user ${id}`;
+    return this.usersService.remove(id);
   }
 }
