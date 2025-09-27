@@ -6,7 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'front-commerce-rust.vercel.app',
+    origin: [process.env.FRONTEND_URL, 'front-commerce-rust.vercel.app'],
     credentials: true,
   });
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important

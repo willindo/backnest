@@ -91,8 +91,8 @@ let ProductsService = class ProductsService {
         }
     }
     mapToResponse(product) {
-        var _a, _b, _c;
-        return Object.assign(Object.assign({}, product), { description: (_a = product.description) !== null && _a !== void 0 ? _a : undefined, currency: (_b = product.currency) !== null && _b !== void 0 ? _b : undefined, images: (_c = product.images) !== null && _c !== void 0 ? _c : [], createdAt: product.createdAt.toISOString(), updatedAt: product.updatedAt.toISOString() });
+        var _a, _b, _c, _d;
+        return Object.assign(Object.assign({}, product), { description: (_a = product.description) !== null && _a !== void 0 ? _a : undefined, currency: (_b = product.currency) !== null && _b !== void 0 ? _b : undefined, images: (_c = product.images) !== null && _c !== void 0 ? _c : [], sku: (_d = product.sku) !== null && _d !== void 0 ? _d : undefined, createdAt: product.createdAt.toISOString(), updatedAt: product.updatedAt.toISOString() });
     }
 };
 exports.ProductsService = ProductsService;
