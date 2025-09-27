@@ -9,9 +9,13 @@ export declare class OrdersService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
+                slug: string;
                 description: string | null;
                 price: number;
+                currency: string;
                 stock: number;
+                images: string[];
+                sku: string | null;
             };
         } & {
             id: string;
@@ -35,9 +39,13 @@ export declare class OrdersService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
+                slug: string;
                 description: string | null;
                 price: number;
+                currency: string;
                 stock: number;
+                images: string[];
+                sku: string | null;
             };
         } & {
             id: string;
@@ -61,9 +69,13 @@ export declare class OrdersService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
+                slug: string;
                 description: string | null;
                 price: number;
+                currency: string;
                 stock: number;
+                images: string[];
+                sku: string | null;
             };
         } & {
             id: string;

@@ -1,8 +1,10 @@
 export declare class CreateProductDto {
     name: string;
-    price: number;
+    slug: string;
     description?: string;
-    image?: string;
-    stock: number;
-    category?: string;
+    price: number;
+    currency?: string;
+    stock?: number;
+    images?: string[];
+    sku?: string;
 }

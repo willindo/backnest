@@ -55,7 +55,7 @@ find /home/badsha/dev/reload-ops/apps/frontend/pages/api \
 
 -type f \( -name "*.controller.ts" -o -name "*.service.ts" -o -name "*.module.ts" \)
 find ~/dev/reload-ops/apps/frontend \
-  -not -path "*/node_modules/*" \
+  -not -path "*/node_modules/*" \ 
   -not -path "*/dist/*" \
   -not -path "*/.next/*" \
   -not -path "*/styles/*" \
