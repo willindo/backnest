@@ -6,11 +6,11 @@ export declare class UsersController {
     findAll(page?: string, limit?: string, role?: string): Promise<{
         data: {
             id: string;
-            email: string;
-            name: string | null;
-            role: import(".prisma/client").$Enums.Role;
             createdAt: Date;
             updatedAt: Date;
+            name: string | null;
+            email: string;
+            role: import(".prisma/client").$Enums.Role;
         }[];
         total: number;
         page: number;
@@ -18,34 +18,34 @@ export declare class UsersController {
     }>;
     findOne(id: string): Promise<{
         id: string;
-        email: string;
-        name: string | null;
-        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
+        name: string | null;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
     }>;
     create(dto: CreateUserDto): Promise<{
         id: string;
-        email: string;
-        name: string | null;
-        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
+        name: string | null;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
     }>;
     update(id: string, dto: UpdateUserDto): Promise<{
         id: string;
-        email: string;
-        name: string | null;
-        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
+        name: string | null;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
     }>;
     remove(id: string): Promise<{
         id: string;
-        email: string;
-        name: string | null;
-        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
+        name: string | null;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
     }>;
 }
