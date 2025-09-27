@@ -20,16 +20,16 @@ export class ProductsService {
       const product = await this.prisma.product.create({
         data: {
           name: dto.name,
-          slug: dto.slug,
+          // 🔹 auto-generate slug if missing
+          slug: dto.slug ?? dto.name.toLowerCase().replace(/\s+/g, '-'),
           description: dto.description ?? undefined,
           price: dto.price,
-          currency: dto.currency ?? undefined,
-          stock: dto.stock ?? undefined,
+          currency: dto.currency ?? 'INR', // 🔹 fallback to default
+          stock: dto.stock ?? 0,
           images: dto.images ?? [],
           sku: dto.sku ?? undefined,
         },
       });
-
       return new ProductResponseDto(this.mapToResponse(product));
     } catch (error: any) {
       if (error.code === 'P2002') {
