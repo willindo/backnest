@@ -18,18 +18,18 @@ let ProductsService = class ProductsService {
         this.prisma = prisma;
     }
     async create(dto) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e;
         try {
             const product = await this.prisma.product.create({
                 data: {
                     name: dto.name,
-                    slug: (_a = dto.slug) !== null && _a !== void 0 ? _a : dto.name.toLowerCase().replace(/\s+/g, '-'),
-                    description: (_b = dto.description) !== null && _b !== void 0 ? _b : undefined,
+                    slug: dto.slug,
+                    description: (_a = dto.description) !== null && _a !== void 0 ? _a : undefined,
                     price: dto.price,
-                    currency: (_c = dto.currency) !== null && _c !== void 0 ? _c : 'INR',
-                    stock: (_d = dto.stock) !== null && _d !== void 0 ? _d : 0,
-                    images: (_e = dto.images) !== null && _e !== void 0 ? _e : [],
-                    sku: (_f = dto.sku) !== null && _f !== void 0 ? _f : undefined,
+                    currency: (_b = dto.currency) !== null && _b !== void 0 ? _b : undefined,
+                    stock: (_c = dto.stock) !== null && _c !== void 0 ? _c : undefined,
+                    images: (_d = dto.images) !== null && _d !== void 0 ? _d : [],
+                    sku: (_e = dto.sku) !== null && _e !== void 0 ? _e : undefined,
                 },
             });
             return new product_response_dto_1.ProductResponseDto(this.mapToResponse(product));

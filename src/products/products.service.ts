@@ -20,16 +20,16 @@ export class ProductsService {
       const product = await this.prisma.product.create({
         data: {
           name: dto.name,
-          // 🔹 auto-generate slug if missing
-          slug: dto.slug ?? dto.name.toLowerCase().replace(/\s+/g, '-'),
+          slug: dto.slug,
           description: dto.description ?? undefined,
           price: dto.price,
-          currency: dto.currency ?? 'INR', // 🔹 fallback to default
-          stock: dto.stock ?? 0,
+          currency: dto.currency ?? undefined,
+          stock: dto.stock ?? undefined,
           images: dto.images ?? [],
-          sku: dto.sku ?? undefined,
+          sku: dto.sku ?? undefined, // 🔹 already correct
         },
       });
+
       return new ProductResponseDto(this.mapToResponse(product));
     } catch (error: any) {
       if (error.code === 'P2002') {
@@ -78,7 +78,7 @@ export class ProductsService {
           currency: dto.currency ?? undefined,
           stock: dto.stock ?? undefined,
           images: dto.images ?? undefined,
-          sku: dto.sku ?? undefined,
+          sku: dto.sku ?? undefined, // 🔹 already correct
         },
       });
 

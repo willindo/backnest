@@ -13,6 +13,7 @@ export class CreateProductDto {
   @IsString()
   name!: string; // <-- note the !
 
+  @IsOptional()
   @IsString()
   slug!: string;
 
