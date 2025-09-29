@@ -6,7 +6,7 @@ services:
     region: frankfurt
     plan: free
     buildCommand: "npm install && npm run build"
-    startCommand: "npm run start:prod"
+    startCommand: "npm run start:prod" # ⬅️ no prestart here
     envVars:
       - key: DATABASE_URL
         fromService:
@@ -14,7 +14,7 @@ services:
           name: setupnest
           property: connectionString
 
-  # Worker service (run Prisma migrations once per deploy)
+  # Worker service (runs Prisma migrations once per deploy)
   - type: worker
     name: prisma-migrate
     env: node
