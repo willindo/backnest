@@ -5,12 +5,25 @@ services:
     region: frankfurt
     plan: free
     buildCommand: "npm install && npm run build"
-    startCommand: "npm run prestart && npm run start:prod"
+    startCommand: "npm run start"
     envVars:
       - key: DATABASE_URL
         fromService:
           type: postgres
-          name: setupnest # 👈 must match your DB service name
+          name: setupnest
+          property: connectionString
+
+  - type: worker
+    name: prisma-migrate
+    env: node
+    plan: free
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm run migrate:deploy"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: postgres
+          name: setupnest
           property: connectionString
 
 databases:
