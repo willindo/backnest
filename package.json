@@ -8,10 +8,9 @@
   "scripts": {
     "migrate:deploy": "prisma migrate deploy",
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
+    "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",

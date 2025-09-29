@@ -1,11 +1,12 @@
 services:
+  # Web service (NestJS app)
   - type: web
     name: backnest
     env: node
     region: frankfurt
     plan: free
     buildCommand: "npm install && npm run build"
-    startCommand: "npm run start"
+    startCommand: "npm run start:prod"
     envVars:
       - key: DATABASE_URL
         fromService:
@@ -13,6 +14,7 @@ services:
           name: setupnest
           property: connectionString
 
+  # Worker service (run Prisma migrations once per deploy)
   - type: worker
     name: prisma-migrate
     env: node
