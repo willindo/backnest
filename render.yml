@@ -1,31 +1,16 @@
 services:
-  # Web service (NestJS app)
   - type: web
     name: backnest
     env: node
     region: frankfurt
     plan: free
     buildCommand: "npm install && npm run build"
-    startCommand: "npm run start:prod" # ⬅️ no prestart here
+    startCommand: "npm run prestart && npm run start:prod"
     envVars:
       - key: DATABASE_URL
         fromService:
           type: postgres
-          name: setupnest
-          property: connectionString
-
-  # Worker service (runs Prisma migrations once per deploy)
-  - type: worker
-    name: prisma-migrate
-    env: node
-    plan: free
-    buildCommand: "npm install && npm run build"
-    startCommand: "npm run migrate:deploy"
-    envVars:
-      - key: DATABASE_URL
-        fromService:
-          type: postgres
-          name: setupnest
+          name: setupnest # 👈 must match your DB service name
           property: connectionString
 
 databases:
