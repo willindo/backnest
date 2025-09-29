@@ -8,8 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsService = void 0;
+const slugify_1 = __importDefault(require("slugify"));
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const product_response_dto_1 = require("./dto/product-response.dto");
@@ -20,16 +24,23 @@ let ProductsService = class ProductsService {
     async create(dto) {
         var _a, _b, _c, _d, _e;
         try {
+            let slug = dto.slug || (0, slugify_1.default)(dto.name, { lower: true, strict: true });
+            let uniqueSlug = slug;
+            let counter = 1;
+            while (await this.prisma.product.findUnique({ where: { slug: uniqueSlug } })) {
+                uniqueSlug = `${slug}-${counter++}`;
+            }
+            const generatedSku = (_a = dto.sku) !== null && _a !== void 0 ? _a : `SKU-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
             const product = await this.prisma.product.create({
                 data: {
                     name: dto.name,
-                    slug: dto.slug,
-                    description: (_a = dto.description) !== null && _a !== void 0 ? _a : undefined,
+                    slug: uniqueSlug,
+                    description: (_b = dto.description) !== null && _b !== void 0 ? _b : undefined,
                     price: dto.price,
-                    currency: (_b = dto.currency) !== null && _b !== void 0 ? _b : undefined,
-                    stock: (_c = dto.stock) !== null && _c !== void 0 ? _c : undefined,
-                    images: (_d = dto.images) !== null && _d !== void 0 ? _d : [],
-                    sku: (_e = dto.sku) !== null && _e !== void 0 ? _e : undefined,
+                    currency: (_c = dto.currency) !== null && _c !== void 0 ? _c : undefined,
+                    stock: (_d = dto.stock) !== null && _d !== void 0 ? _d : undefined,
+                    images: (_e = dto.images) !== null && _e !== void 0 ? _e : [],
+                    sku: generatedSku,
                 },
             });
             return new product_response_dto_1.ProductResponseDto(this.mapToResponse(product));

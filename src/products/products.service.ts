@@ -1,4 +1,5 @@
 // src/products/products.service.ts
+import slugify from 'slugify';
 import {
   Injectable,
   NotFoundException,
@@ -17,16 +18,30 @@ export class ProductsService {
   // 🔹 Create a new product
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     try {
+      let slug = dto.slug || slugify(dto.name, { lower: true, strict: true });
+
+      // Ensure uniqueness
+      let uniqueSlug = slug;
+      let counter = 1;
+      while (
+        await this.prisma.product.findUnique({ where: { slug: uniqueSlug } })
+      ) {
+        uniqueSlug = `${slug}-${counter++}`;
+      }
+      // 🔹 Auto-generate SKU if missing
+      const generatedSku =
+        dto.sku ??
+        `SKU-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       const product = await this.prisma.product.create({
         data: {
           name: dto.name,
-          slug: dto.slug,
+          slug: uniqueSlug,
           description: dto.description ?? undefined,
           price: dto.price,
           currency: dto.currency ?? undefined,
           stock: dto.stock ?? undefined,
           images: dto.images ?? [],
-          sku: dto.sku ?? undefined, // 🔹 already correct
+          sku: generatedSku,
         },
       });
 
