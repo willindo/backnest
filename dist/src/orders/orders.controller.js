@@ -14,16 +14,21 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersController = void 0;
 const common_1 = require("@nestjs/common");
-const dto_1 = require("./dto");
+const orders_service_1 = require("./orders.service");
+const create_order_dto_1 = require("./dto/create-order.dto");
 let OrdersController = class OrdersController {
-    findAll() {
-        return 'Get all orders';
+    constructor(ordersService) {
+        this.ordersService = ordersService;
     }
-    findOne(id) {
-        return `Get order ${id}`;
+    async findAll() {
+        return this.ordersService.findAll();
     }
-    create(dto) {
-        return `Create order for user ${dto.userId} with ${dto.items.length} items`;
+    async findOne(id) {
+        return this.ordersService.findOne(id);
+    }
+    async create(req, dto) {
+        const userId = req.user.id;
+        return this.ordersService.checkout(userId);
     }
 };
 exports.OrdersController = OrdersController;
@@ -31,23 +36,25 @@ __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [dto_1.CreateOrderDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, create_order_dto_1.CreateOrderDto]),
+    __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "create", null);
 exports.OrdersController = OrdersController = __decorate([
-    (0, common_1.Controller)('order')
+    (0, common_1.Controller)('orders'),
+    __metadata("design:paramtypes", [orders_service_1.OrdersService])
 ], OrdersController);
 //# sourceMappingURL=orders.controller.js.map

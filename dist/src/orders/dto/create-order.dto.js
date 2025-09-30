@@ -24,10 +24,10 @@ __decorate([
 ], CreateOrderDto.prototype, "items", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], CreateOrderDto.prototype, "shippingAddress", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
+    __metadata("design:type", String)
 ], CreateOrderDto.prototype, "userId", void 0);
 //# sourceMappingURL=create-order.dto.js.map

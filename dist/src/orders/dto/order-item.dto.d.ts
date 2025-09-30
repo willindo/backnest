@@ -1,4 +1,5 @@
 export declare class OrderItemDto {
-    productId: number;
+    productId: string;
     quantity: number;
+    price?: number;
 }

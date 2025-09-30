@@ -4,10 +4,10 @@ export declare class AuthController {
     private auth;
     constructor(auth: AuthService);
     register(dto: RegisterDto): Promise<{
+        name: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
     }>;

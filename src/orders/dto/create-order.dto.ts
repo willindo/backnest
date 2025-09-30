@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, ValidateNested } from 'class-validator';
+import { IsArray, ValidateNested, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderItemDto } from './order-item.dto';
 
@@ -9,9 +9,16 @@ export class CreateOrderDto {
   items!: OrderItemDto[];
 
   @IsOptional()
-  shippingAddress?: string;
+  shippingAddress?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
 
-  // Later, we will not accept userId here — server uses authenticated user.
+  // userId will not be sent by frontend, server will use auth
   @IsOptional()
-  userId?: number;
+  userId?: string;
 }

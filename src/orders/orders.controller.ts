@@ -1,20 +1,38 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
-import { CreateOrderDto } from './dto';
+import { Controller, Get, Post, Param, Req, Body } from '@nestjs/common';
+import { OrdersService } from './orders.service';
+import { OrderResponseDto } from './dto/order-response.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { Request } from 'express'; // import Express types
 
-@Controller('order')
+// Optional: type your user
+interface AuthRequest extends Request {
+  user: { id: string };
+}
+
+@Controller('orders') // matches frontend
 export class OrdersController {
+  constructor(private ordersService: OrdersService) {}
+
+  // GET /orders
   @Get()
-  findAll() {
-    return 'Get all orders';
+  async findAll(): Promise<OrderResponseDto[]> {
+    return this.ordersService.findAll();
   }
 
+  // GET /orders/:id
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return `Get order ${id}`;
+  async findOne(@Param('id') id: string): Promise<OrderResponseDto> {
+    return this.ordersService.findOne(id);
   }
 
+  // POST /orders
   @Post()
-  create(@Body() dto: CreateOrderDto) {
-    return `Create order for user ${dto.userId} with ${dto.items.length} items`;
+  async create(
+    @Req() req: AuthRequest,
+    @Body() dto: CreateOrderDto, // optional shippingAddress
+  ): Promise<OrderResponseDto> {
+    const userId = req.user.id;
+    // For now, shippingAddress can be ignored or passed to service later
+    return this.ordersService.checkout(userId);
   }
 }

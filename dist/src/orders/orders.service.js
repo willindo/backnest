@@ -16,37 +16,57 @@ let OrdersService = class OrdersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll() {
-        return this.prisma.order.findMany({
-            include: { items: { include: { product: true } } },
-        });
+    mapOrderToDto(order) {
+        var _a;
+        return {
+            id: order.id,
+            userId: order.userId,
+            total: order.total,
+            status: (_a = order.status) !== null && _a !== void 0 ? _a : 'PENDING',
+            items: order.items.map((item) => {
+                var _a;
+                return ({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: item.price,
+                    name: (_a = item.product) === null || _a === void 0 ? void 0 : _a.name,
+                });
+            }),
+            createdAt: order.createdAt.toISOString(),
+            updatedAt: order.updatedAt.toISOString(),
+        };
     }
-    findOne(id) {
-        return this.prisma.order.findUnique({
+    async findAll() {
+        const orders = await this.prisma.order.findMany({
+            include: { items: { include: { product: true } } },
+            orderBy: { createdAt: 'desc' },
+        });
+        return orders.map(this.mapOrderToDto);
+    }
+    async findOne(id) {
+        const order = await this.prisma.order.findUnique({
             where: { id },
             include: { items: { include: { product: true } } },
         });
+        if (!order)
+            throw new common_1.NotFoundException(`Order ${id} not found`);
+        return this.mapOrderToDto(order);
     }
     async checkout(userId) {
         return this.prisma.$transaction(async (tx) => {
             const cart = await tx.cart.findFirst({
                 where: { userId },
-                include: {
-                    items: {
-                        include: {
-                            product: true,
-                        },
-                    },
-                },
+                include: { items: { include: { product: true } } },
             });
             if (!cart || cart.items.length === 0) {
-                throw new Error('Cart is empty');
+                throw new common_1.NotFoundException('Cart is empty');
             }
             const total = cart.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
             const order = await tx.order.create({
                 data: {
                     userId,
                     total,
+                    status: 'PENDING',
                     items: {
                         create: cart.items.map((item) => ({
                             productId: item.productId,
@@ -55,12 +75,10 @@ let OrdersService = class OrdersService {
                         })),
                     },
                 },
-                include: {
-                    items: { include: { product: true } },
-                },
+                include: { items: { include: { product: true } } },
             });
             await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-            return order;
+            return this.mapOrderToDto(order);
         });
     }
 };

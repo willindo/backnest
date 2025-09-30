@@ -14,51 +14,81 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CartController = void 0;
 const common_1 = require("@nestjs/common");
+const cart_service_1 = require("./cart.service");
 const dto_1 = require("./dto");
 let CartController = class CartController {
-    findAll() {
-        return 'Get cart items';
+    constructor(cartService) {
+        this.cartService = cartService;
     }
-    add(dto) {
-        return `Add product ${dto.productId} (qty: ${dto.quantity})`;
+    getUserId(headers) {
+        const userId = headers['x-user-id'];
+        if (!userId)
+            throw new Error('Missing X-User-Id header');
+        return userId;
     }
-    update(id, dto) {
-        return `Update cart item ${id}`;
+    async findCart(req) {
+        const userId = this.getUserId(req.headers);
+        return this.cartService.findCartByUser(userId);
     }
-    remove(dto) {
-        return `Remove product ${dto.productId} from cart`;
+    async add(req, dto) {
+        const userId = this.getUserId(req.headers);
+        return this.cartService.add(userId, dto);
+    }
+    async update(req, itemId, dto) {
+        const userId = this.getUserId(req.headers);
+        return this.cartService.update(userId, Object.assign(Object.assign({}, dto), { itemId }));
+    }
+    async remove(req, itemId) {
+        const userId = this.getUserId(req.headers);
+        return this.cartService.remove(userId, itemId);
+    }
+    async clear(req) {
+        const userId = this.getUserId(req.headers);
+        return this.cartService.clear(userId);
     }
 };
 exports.CartController = CartController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], CartController.prototype, "findAll", null);
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], CartController.prototype, "findCart", null);
 __decorate([
-    (0, common_1.Post)(),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [dto_1.AddToCartDto]),
-    __metadata("design:returntype", void 0)
-], CartController.prototype, "add", null);
-__decorate([
-    (0, common_1.Put)(':id'),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.Post)('add'),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, dto_1.UpdateCartItemDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, dto_1.AddToCartDto]),
+    __metadata("design:returntype", Promise)
+], CartController.prototype, "add", null);
+__decorate([
+    (0, common_1.Put)('item/:itemId'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('itemId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, dto_1.UpdateCartItemDto]),
+    __metadata("design:returntype", Promise)
 ], CartController.prototype, "update", null);
 __decorate([
-    (0, common_1.Delete)(),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Delete)('item/:itemId'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('itemId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [dto_1.RemoveFromCartDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
 ], CartController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)('clear'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], CartController.prototype, "clear", null);
 exports.CartController = CartController = __decorate([
-    (0, common_1.Controller)('cart')
+    (0, common_1.Controller)('cart'),
+    __metadata("design:paramtypes", [cart_service_1.CartService])
 ], CartController);
 //# sourceMappingURL=cart.controller.js.map

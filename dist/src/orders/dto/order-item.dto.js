@@ -16,11 +16,16 @@ class OrderItemDto {
 exports.OrderItemDto = OrderItemDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    __metadata("design:type", Number)
+    __metadata("design:type", String)
 ], OrderItemDto.prototype, "productId", void 0);
 __decorate([
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.Min)(1),
     __metadata("design:type", Number)
 ], OrderItemDto.prototype, "quantity", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], OrderItemDto.prototype, "price", void 0);
 //# sourceMappingURL=order-item.dto.js.map
