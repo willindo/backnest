@@ -1,16 +1,12 @@
+import { z } from 'zod';
+import { OrderModelSchema } from '../../generated/zod/schemas';
 import { OrderItemDto } from './order-item.dto';
 
-export class OrderResponseDto {
-  id!: string; // order ID
-  userId!: string; // user who created the order
-  total!: number; // total price of the order
-  status!: string; // order status, e.g., 'PENDING'
-  items!: Array<{
-    productId: string;
-    quantity: number;
-    price: number;
-    name?: string; // product name snapshot
-  }>;
-  createdAt!: string; // ISO string
-  updatedAt!: string; // ISO string
-}
+/**
+ * Response shape for returning full orders with items
+ */
+export const OrderResponseDto = OrderModelSchema.extend({
+  items: z.array(OrderItemDto),
+});
+
+export type OrderResponseDto = z.infer<typeof OrderResponseDto>;

@@ -1,14 +1,15 @@
-import { IsInt, IsString, IsOptional, Min } from 'class-validator';
+import { z } from 'zod';
+import { OrderItemModelSchema } from '../../generated/zod/schemas';
 
-export class OrderItemDto {
-  @IsString()
-  productId!: string; // match Prisma & frontend
+/**
+ * OrderItem DTO
+ * - `priceAtPurchase` is required (snapshotted at order creation)
+ */
+export const OrderItemDto = OrderItemModelSchema.pick({
+  id: true,
+  productId: true,
+  quantity: true,
+  priceAtPurchase: true,
+});
 
-  @IsInt()
-  @Min(1)
-  quantity!: number;
-
-  @IsOptional()
-  @IsInt()
-  price?: number; // optional snapshot if frontend provides
-}
+export type OrderItemDto = z.infer<typeof OrderItemDto>;

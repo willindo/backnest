@@ -1,6 +1,13 @@
+generator zod {
+  provider  = "prisma-zod-generator"
+  output    = "../src/generated/zod"
+  relations = true
+}
+
 generator client {
   provider = "prisma-client-js"
 }
+
 
 datasource db {
   provider = "postgresql" // or "mysql"/"sqlite" depending on setup
@@ -20,8 +27,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  carts  Cart[]
-  orders Order[]
+  carts     Cart[]
+  orders    Order[]
+  wishlists Wishlist[]
 }
 
 enum Role {
@@ -33,48 +41,95 @@ enum Role {
 // Products
 // ----------------------
 model Product {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   name        String
-  slug        String   @unique
   description String?
-  price       Int // smallest currency unit (e.g. paise/cents)
-  currency    String   @default("INR")
-  stock       Int      @default(0)
-  images      String[] @default([]) // Postgres array
-  sku         String?  @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  price       Float
+  stock       Int
+  images      String[]
+  
+  // Relations
+  category    Category?     @relation(fields: [categoryId], references: [id])
+  categoryId  String?
+  gender      Gender?
 
-  cartItems  CartItem[] // ✅ relation back from CartItem
-  orderItems OrderItem[] // ✅ relation back from OrderItem
+  sizes       ProductSize[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  @@index([name])
-  @@index([createdAt])
+  // Back-relations
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orderItems    OrderItem[]
 }
 
-// ----------------------
-// Cart & Cart Items
-// ----------------------
-model Cart {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  user  User       @relation(fields: [userId], references: [id])
-  items CartItem[]
+model Category {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  products Product[]
+}
+
+enum Gender {
+  MENS
+  WOMENS
+  BOYS
+  GIRLS
+  UNISEX
+}
+
+model ProductSize {
+  id        String  @id @default(uuid())
+  size      Size
+  quantity  Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+}
+
+enum Size {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model CartItem {
-  id        String @id @default(uuid())
-  cartId    String
+  id        String  @id @default(uuid())
+  product   Product @relation(fields: [productId], references: [id])
   productId String
-  quantity  Int    @default(1)
+  size      Size?
+  quantity  Int     @default(1)
+  cart      Cart    @relation(fields: [cartId], references: [id])
+  cartId    String
 
-  cart    Cart    @relation(fields: [cartId], references: [id])
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([cartId, productId]) // <-- add this
+}
 
-  @@unique([cartId, productId]) // one product per cart
+model Wishlist {
+  id        String         @id @default(uuid())
+  user      User           @relation(fields: [userId], references: [id])
+  userId    String
+  items     WishlistItem[]
+  createdAt DateTime       @default(now())
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id])
+  wishlistId String
 }
 
 // ----------------------
@@ -93,15 +148,16 @@ model Order {
 }
 
 model OrderItem {
-  id        String @id @default(uuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Float // snapshot of product price
+  id              String  @id @default(cuid())  // cuid() is preferred in Prisma
+  orderId         String
+  productId       String
+  quantity        Int
+  priceAtPurchase Float   // clearer than just "price"
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 }
+
 
 enum OrderStatus {
   PENDING
@@ -110,3 +166,5 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
 }
+
+

@@ -20,71 +20,59 @@ let CartController = class CartController {
     constructor(cartService) {
         this.cartService = cartService;
     }
-    getUserId(headers) {
-        const userId = headers['x-user-id'];
-        if (!userId)
-            throw new Error('Missing X-User-Id header');
-        return userId;
-    }
-    async findCart(req) {
-        const userId = this.getUserId(req.headers);
+    async findCart(userId) {
         return this.cartService.findCartByUser(userId);
     }
-    async add(req, dto) {
-        const userId = this.getUserId(req.headers);
+    async add(userId, dto) {
         return this.cartService.add(userId, dto);
     }
-    async update(req, itemId, dto) {
-        const userId = this.getUserId(req.headers);
-        return this.cartService.update(userId, Object.assign(Object.assign({}, dto), { itemId }));
+    async update(userId, dto) {
+        return this.cartService.update(userId, dto);
     }
-    async remove(req, itemId) {
-        const userId = this.getUserId(req.headers);
+    async remove(userId, itemId) {
         return this.cartService.remove(userId, itemId);
     }
-    async clear(req) {
-        const userId = this.getUserId(req.headers);
+    async clear(userId) {
         return this.cartService.clear(userId);
     }
 };
 exports.CartController = CartController;
 __decorate([
-    (0, common_1.Get)(),
-    __param(0, (0, common_1.Req)()),
+    (0, common_1.Get)(':userId'),
+    __param(0, (0, common_1.Param)('userId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "findCart", null);
 __decorate([
-    (0, common_1.Post)('add'),
-    __param(0, (0, common_1.Req)()),
+    (0, common_1.Post)(':userId/add'),
+    __param(0, (0, common_1.Param)('userId')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, dto_1.AddToCartDto]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "add", null);
 __decorate([
-    (0, common_1.Put)('item/:itemId'),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Param)('itemId')),
-    __param(2, (0, common_1.Body)()),
+    (0, common_1.Put)(':userId/update'),
+    __param(0, (0, common_1.Param)('userId')),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, dto_1.UpdateCartItemDto]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "update", null);
 __decorate([
-    (0, common_1.Delete)('item/:itemId'),
-    __param(0, (0, common_1.Req)()),
+    (0, common_1.Delete)(':userId/item/:itemId'),
+    __param(0, (0, common_1.Param)('userId')),
     __param(1, (0, common_1.Param)('itemId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "remove", null);
 __decorate([
-    (0, common_1.Post)('clear'),
-    __param(0, (0, common_1.Req)()),
+    (0, common_1.Delete)(':userId/clear'),
+    __param(0, (0, common_1.Param)('userId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "clear", null);
 exports.CartController = CartController = __decorate([

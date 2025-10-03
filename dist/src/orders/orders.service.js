@@ -16,70 +16,98 @@ let OrdersService = class OrdersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    mapOrderToDto(order) {
-        var _a;
-        return {
-            id: order.id,
-            userId: order.userId,
-            total: order.total,
-            status: (_a = order.status) !== null && _a !== void 0 ? _a : 'PENDING',
-            items: order.items.map((item) => {
-                var _a;
-                return ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    price: item.price,
-                    name: (_a = item.product) === null || _a === void 0 ? void 0 : _a.name,
-                });
-            }),
-            createdAt: order.createdAt.toISOString(),
-            updatedAt: order.updatedAt.toISOString(),
-        };
-    }
-    async findAll() {
-        const orders = await this.prisma.order.findMany({
-            include: { items: { include: { product: true } } },
-            orderBy: { createdAt: 'desc' },
-        });
-        return orders.map(this.mapOrderToDto);
-    }
-    async findOne(id) {
-        const order = await this.prisma.order.findUnique({
-            where: { id },
-            include: { items: { include: { product: true } } },
-        });
-        if (!order)
-            throw new common_1.NotFoundException(`Order ${id} not found`);
-        return this.mapOrderToDto(order);
-    }
-    async checkout(userId) {
+    async create(payload) {
         return this.prisma.$transaction(async (tx) => {
-            const cart = await tx.cart.findFirst({
-                where: { userId },
-                include: { items: { include: { product: true } } },
-            });
-            if (!cart || cart.items.length === 0) {
-                throw new common_1.NotFoundException('Cart is empty');
+            let items = [];
+            if ('cartId' in payload) {
+                const cart = await tx.cart.findUnique({
+                    where: { id: payload.cartId },
+                    include: {
+                        items: {
+                            include: { product: true },
+                        },
+                    },
+                });
+                if (!cart)
+                    throw new common_1.NotFoundException(`Cart ${payload.cartId} not found`);
+                if (!cart.items || cart.items.length === 0) {
+                    throw new common_1.BadRequestException('Cart is empty');
+                }
+                items = cart.items.map((ci) => ({
+                    productId: ci.productId,
+                    quantity: ci.quantity,
+                }));
             }
-            const total = cart.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+            else {
+                items = payload.items;
+            }
+            const productIds = items.map((i) => i.productId);
+            const products = await tx.product.findMany({
+                where: { id: { in: productIds } },
+                select: { id: true, price: true, stock: true, name: true },
+            });
+            const prodMap = new Map(products.map((p) => [p.id, p]));
+            for (const it of items) {
+                if (!prodMap.has(it.productId)) {
+                    throw new common_1.NotFoundException(`Product ${it.productId} not found`);
+                }
+            }
+            for (const it of items) {
+                const updated = await tx.product.updateMany({
+                    where: {
+                        id: it.productId,
+                        stock: { gte: it.quantity },
+                    },
+                    data: {
+                        stock: { decrement: it.quantity },
+                    },
+                });
+                if (updated.count === 0) {
+                    throw new common_1.ConflictException(`Insufficient stock for product ${it.productId}`);
+                }
+            }
+            const orderItemsCreate = items.map((it) => {
+                const p = prodMap.get(it.productId);
+                const priceAtPurchase = p.price;
+                return {
+                    productId: it.productId,
+                    quantity: it.quantity,
+                    priceAtPurchase,
+                };
+            });
+            const total = orderItemsCreate.reduce((s, it) => s + it.priceAtPurchase * it.quantity, 0);
             const order = await tx.order.create({
                 data: {
-                    userId,
+                    userId: 'userId' in payload ? payload.userId : null,
+                    status: 'status' in payload ? payload.status : 'PENDING',
                     total,
-                    status: 'PENDING',
                     items: {
-                        create: cart.items.map((item) => ({
-                            productId: item.productId,
-                            quantity: item.quantity,
-                            price: item.product.price,
+                        create: orderItemsCreate.map((it) => ({
+                            quantity: it.quantity,
+                            priceAtPurchase: it.priceAtPurchase,
+                            product: { connect: { id: it.productId } },
                         })),
                     },
                 },
-                include: { items: { include: { product: true } } },
+                include: { items: true },
             });
-            await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-            return this.mapOrderToDto(order);
+            if ('cartId' in payload) {
+                await tx.cartItem.deleteMany({ where: { cartId: payload.cartId } });
+            }
+            return order;
         });
+    }
+    async findAll() {
+        return this.prisma.order.findMany({ include: { items: true } });
+    }
+    async findOne(id) {
+        const o = await this.prisma.order.findUnique({
+            where: { id },
+            include: { items: true },
+        });
+        if (!o)
+            throw new common_1.NotFoundException(`Order ${id} not found`);
+        return o;
     }
 };
 exports.OrdersService = OrdersService;

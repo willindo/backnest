@@ -76,3 +76,16 @@ docker compose exec payment-api npx prisma migrate deploy
 docker compose exec payment-api npx prisma migrate reset
 docker compose exec payment-db psql -U postgres -d payment_db -c '\dt'
 badsha@badsha-VirtualBox:~/dev/payment$ 
+
+npm run zod:sync
+
+import { Product } from "@/generated/zod/ProductSchema";
+
+import { CreateProductSchema } from "@/generated/zod/ProductSchema";
+import { ProductSchema } from '@/generated/zod/ProductSchema';
+
+// Use ProductSchema for validation
+
+function validateProduct(data: unknown) {
+  return CreateProductSchema.parse(data);
+}

@@ -1,7 +1,7 @@
 // src/products/products.module.ts
 import { Module } from '@nestjs/common';
-import { ProductsService } from './products.service';
-import { ProductsController } from './products.controller';
+import { ProductsService } from './product.service';
+import { ProductsController } from './product.controller';
 import { PrismaService } from 'prisma/prisma.service';
 
 @Module({

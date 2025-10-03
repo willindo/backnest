@@ -1,6 +1,5 @@
 import { PrismaService } from 'prisma/prisma.service';
-import { AddToCartDto, UpdateCartItemDto } from './dto';
-import { CartDto } from './dto/cart-response.dto';
+import { AddToCartDto, UpdateCartItemDto, CartDto } from './dto';
 export declare class CartService {
     private prisma;
     constructor(prisma: PrismaService);

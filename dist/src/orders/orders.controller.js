@@ -20,39 +20,38 @@ let OrdersController = class OrdersController {
     constructor(ordersService) {
         this.ordersService = ordersService;
     }
-    async findAll() {
+    async create(body) {
+        const dto = create_order_dto_1.CreateOrderDto.parse(body);
+        return this.ordersService.create(dto);
+    }
+    findAll() {
         return this.ordersService.findAll();
     }
-    async findOne(id) {
+    findOne(id) {
         return this.ordersService.findOne(id);
-    }
-    async create(req, dto) {
-        const userId = req.user.id;
-        return this.ordersService.checkout(userId);
     }
 };
 exports.OrdersController = OrdersController;
 __decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "create", null);
+__decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "findOne", null);
-__decorate([
-    (0, common_1.Post)(),
-    __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, create_order_dto_1.CreateOrderDto]),
-    __metadata("design:returntype", Promise)
-], OrdersController.prototype, "create", null);
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     __metadata("design:paramtypes", [orders_service_1.OrdersService])
