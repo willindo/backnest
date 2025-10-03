@@ -4,50 +4,50 @@ export declare class OrdersController {
     constructor(ordersService: OrdersService);
     create(body: unknown): Promise<{
         items: {
-            id: string;
             productId: string;
             quantity: number;
+            id: string;
             priceAtPurchase: number;
             orderId: string;
         }[];
     } & {
+        userId: string;
         id: string;
         total: number;
         status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
     }>;
     findAll(): Promise<({
         items: {
-            id: string;
             productId: string;
             quantity: number;
+            id: string;
             priceAtPurchase: number;
             orderId: string;
         }[];
     } & {
+        userId: string;
         id: string;
         total: number;
         status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
     })[]>;
     findOne(id: string): Promise<{
         items: {
-            id: string;
             productId: string;
             quantity: number;
+            id: string;
             priceAtPurchase: number;
             orderId: string;
         }[];
     } & {
+        userId: string;
         id: string;
         total: number;
         status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
     }>;
 }
