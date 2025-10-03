@@ -10,12 +10,12 @@ export declare class CartController {
             id: string;
             productId: string;
             quantity: number;
-            product?: {
-                id: string;
+            product: {
                 name: string;
                 price: number;
                 description?: string | null | undefined;
-            } | undefined;
+                image?: string | null | undefined;
+            };
         }[];
         createdAt: string;
         updatedAt: string;
@@ -27,12 +27,12 @@ export declare class CartController {
             id: string;
             productId: string;
             quantity: number;
-            product?: {
-                id: string;
+            product: {
                 name: string;
                 price: number;
                 description?: string | null | undefined;
-            } | undefined;
+                image?: string | null | undefined;
+            };
         }[];
         createdAt: string;
         updatedAt: string;
@@ -44,12 +44,12 @@ export declare class CartController {
             id: string;
             productId: string;
             quantity: number;
-            product?: {
-                id: string;
+            product: {
                 name: string;
                 price: number;
                 description?: string | null | undefined;
-            } | undefined;
+                image?: string | null | undefined;
+            };
         }[];
         createdAt: string;
         updatedAt: string;
@@ -61,12 +61,12 @@ export declare class CartController {
             id: string;
             productId: string;
             quantity: number;
-            product?: {
-                id: string;
+            product: {
                 name: string;
                 price: number;
                 description?: string | null | undefined;
-            } | undefined;
+                image?: string | null | undefined;
+            };
         }[];
         createdAt: string;
         updatedAt: string;
@@ -78,12 +78,12 @@ export declare class CartController {
             id: string;
             productId: string;
             quantity: number;
-            product?: {
-                id: string;
+            product: {
                 name: string;
                 price: number;
                 description?: string | null | undefined;
-            } | undefined;
+                image?: string | null | undefined;
+            };
         }[];
         createdAt: string;
         updatedAt: string;

@@ -20,18 +20,16 @@ let CartService = class CartService {
         return {
             id: cart.id,
             userId: cart.userId,
-            items: (cart.items || []).map((item) => ({
+            items: cart.items.map((item) => ({
                 id: item.id,
                 productId: item.productId,
                 quantity: item.quantity,
-                product: item.product
-                    ? {
-                        id: item.product.id,
-                        name: item.product.name,
-                        price: item.product.price,
-                        description: item.product.description,
-                    }
-                    : undefined,
+                product: {
+                    name: item.productName || 'Unknown Product',
+                    price: item.productPrice || 0,
+                    description: item.productDescription || undefined,
+                    image: item.productImage || undefined,
+                },
             })),
             createdAt: cart.createdAt.toISOString(),
             updatedAt: cart.updatedAt.toISOString(),
@@ -59,6 +57,11 @@ let CartService = class CartService {
         let cart = await this.prisma.cart.findFirst({ where: { userId } });
         if (!cart)
             cart = await this.prisma.cart.create({ data: { userId } });
+        const product = await this.prisma.product.findUnique({
+            where: { id: dto.productId },
+        });
+        if (!product)
+            throw new common_1.NotFoundException('Product not found');
         await this.prisma.cartItem.upsert({
             where: {
                 cartId_productId: { cartId: cart.id, productId: dto.productId },
@@ -68,6 +71,10 @@ let CartService = class CartService {
                 cartId: cart.id,
                 productId: dto.productId,
                 quantity: dto.quantity,
+                productName: product.name,
+                productPrice: product.price,
+                productDescription: product.description,
+                productImage: product.images.length > 0 ? product.images[0] : null,
             },
         });
         return this.findCartByUser(userId);

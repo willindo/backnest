@@ -19,14 +19,12 @@ export const CartItemDto = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
   quantity: z.number().int(),
-  product: z
-    .object({
-      id: z.string().uuid(),
-      name: z.string(),
-      price: z.number(),
-      description: z.string().nullable().optional(),
-    })
-    .optional(),
+  product: z.object({
+    name: z.string(),
+    price: z.number(),
+    description: z.string().nullable().optional(),
+    image: z.string().nullable().optional(),
+  }),
 });
 export type CartItemDto = z.infer<typeof CartItemDto>;
 

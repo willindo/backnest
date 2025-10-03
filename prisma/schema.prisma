@@ -106,15 +106,24 @@ model Cart {
 
 model CartItem {
   id        String  @id @default(uuid())
-  product   Product @relation(fields: [productId], references: [id])
-  productId String
-  size      Size?
-  quantity  Int     @default(1)
   cart      Cart    @relation(fields: [cartId], references: [id])
   cartId    String
 
-  @@unique([cartId, productId]) // <-- add this
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+
+  size      Size?
+  quantity  Int     @default(1)
+
+  // snapshot fields
+  productName        String?
+  productPrice       Float?
+  productDescription String?
+  productImage       String?   // optional: store first image
+
+  @@unique([cartId, productId])
 }
+
 
 model Wishlist {
   id        String         @id @default(uuid())

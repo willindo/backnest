@@ -9,28 +9,22 @@ export class CartService {
 
   /** Map Prisma cart & cart items → CartDto */
   private mapCart(
-    cart: Prisma.CartGetPayload<{
-      include: { items: { include: { product: true } } };
-    }>,
+    cart: Prisma.CartGetPayload<{ include: { items: true } }>,
   ): CartDto {
     return {
       id: cart.id,
       userId: cart.userId,
-      items: (cart.items || []).map(
-        (item): CartItemDto => ({
-          id: item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          product: item.product
-            ? {
-                id: item.product.id,
-                name: item.product.name,
-                price: item.product.price,
-                description: item.product.description,
-              }
-            : undefined,
-        }),
-      ),
+      items: cart.items.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        product: {
+          name: item.productName || 'Unknown Product',
+          price: item.productPrice || 0,
+          description: item.productDescription || undefined,
+          image: item.productImage || undefined,
+        },
+      })),
       createdAt: cart.createdAt.toISOString(),
       updatedAt: cart.updatedAt.toISOString(),
     };
@@ -62,7 +56,11 @@ export class CartService {
     let cart = await this.prisma.cart.findFirst({ where: { userId } });
     if (!cart) cart = await this.prisma.cart.create({ data: { userId } });
 
-    // composite key constraint assumed: @@unique([cartId, productId])
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+
     await this.prisma.cartItem.upsert({
       where: {
         cartId_productId: { cartId: cart.id, productId: dto.productId },
@@ -72,6 +70,10 @@ export class CartService {
         cartId: cart.id,
         productId: dto.productId,
         quantity: dto.quantity,
+        productName: product.name,
+        productPrice: product.price,
+        productDescription: product.description,
+        productImage: product.images.length > 0 ? product.images[0] : null,
       },
     });
 
