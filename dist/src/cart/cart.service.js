@@ -20,19 +20,24 @@ let CartService = class CartService {
         return {
             id: cart.id,
             userId: cart.userId,
-            items: cart.items.map((item) => ({
-                id: item.id,
-                productId: item.productId,
-                quantity: item.quantity,
-                product: {
-                    name: item.productName || 'Unknown Product',
-                    price: item.productPrice || 0,
-                    description: item.productDescription || undefined,
-                    image: item.productImage || undefined,
-                },
-            })),
             createdAt: cart.createdAt.toISOString(),
             updatedAt: cart.updatedAt.toISOString(),
+            items: cart.items.map((item) => {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+                return ({
+                    id: item.id,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    product: {
+                        name: (_c = (_a = item.productName) !== null && _a !== void 0 ? _a : (_b = item.product) === null || _b === void 0 ? void 0 : _b.name) !== null && _c !== void 0 ? _c : 'Unknown Product',
+                        price: (_f = (_d = item.productPrice) !== null && _d !== void 0 ? _d : (_e = item.product) === null || _e === void 0 ? void 0 : _e.price) !== null && _f !== void 0 ? _f : 0,
+                        description: (_j = (_g = item.productDescription) !== null && _g !== void 0 ? _g : (_h = item.product) === null || _h === void 0 ? void 0 : _h.description) !== null && _j !== void 0 ? _j : null,
+                        image: (_o = (_k = item.productImage) !== null && _k !== void 0 ? _k : (_m = (_l = item.product) === null || _l === void 0 ? void 0 : _l.images) === null || _m === void 0 ? void 0 : _m[0]) !== null && _o !== void 0 ? _o : null,
+                        createdAt: cart.createdAt.toISOString(),
+                        updatedAt: cart.updatedAt.toISOString(),
+                    },
+                });
+            }),
         };
     }
     async findCartByUser(userId) {

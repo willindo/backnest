@@ -9,24 +9,30 @@ export class CartService {
 
   /** Map Prisma cart & cart items → CartDto */
   private mapCart(
-    cart: Prisma.CartGetPayload<{ include: { items: true } }>,
+    cart: Prisma.CartGetPayload<{
+      include: { items: { include: { product: true } } };
+    }>,
   ): CartDto {
     return {
       id: cart.id,
       userId: cart.userId,
+      createdAt: cart.createdAt.toISOString(),
+      updatedAt: cart.updatedAt.toISOString(),
       items: cart.items.map((item) => ({
         id: item.id,
         productId: item.productId,
         quantity: item.quantity,
         product: {
-          name: item.productName || 'Unknown Product',
-          price: item.productPrice || 0,
-          description: item.productDescription || undefined,
-          image: item.productImage || undefined,
+          name: item.productName ?? item.product?.name ?? 'Unknown Product',
+          price: item.productPrice ?? item.product?.price ?? 0,
+          description:
+            item.productDescription ?? item.product?.description ?? null,
+          image: item.productImage ?? item.product?.images?.[0] ?? null,
+
+          createdAt: cart.createdAt.toISOString(),
+          updatedAt: cart.updatedAt.toISOString(),
         },
       })),
-      createdAt: cart.createdAt.toISOString(),
-      updatedAt: cart.updatedAt.toISOString(),
     };
   }
 
