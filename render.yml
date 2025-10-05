@@ -4,14 +4,18 @@ services:
     env: node
     region: frankfurt
     plan: free
-    buildCommand: "npm install && npm run build"
-    startCommand: "npm run prestart && npm run start:prod"
+    buildCommand: "npm ci && npm run prisma:generate && nest build"
+    startCommand: "npx prisma migrate deploy && node dist/src/main.js"
     envVars:
       - key: DATABASE_URL
         fromService:
           type: postgres
-          name: setupnest # 👈 must match your DB service name
+          name: setupnest
           property: connectionString
+      - key: FRONTEND_URL
+        value: "https://front-commerce-rust.vercel.app"
+      - key: RENDER
+        value: "true"
 
 databases:
   - name: setupnest
