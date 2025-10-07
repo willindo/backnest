@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "prestart": "prisma migrate deploy",
-    "build": "npm run generate:types && nest build",
+    "build": "npm run prisma:generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -15,7 +15,7 @@
     "start:prod": "node dist/src/main.js",
     "prisma:generate": "npx prisma generate",
     "sync:types": "node ./scripts/sync-types.js",
-    "generate:types": "npm run prisma:generate && npm run sync:types",
+    "generate:types": "npm run prisma:generate && node ./scripts/sync-types.js",
     "sync:types:watch": "node ./scripts/sync-types.js --watch --run-prisma",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",

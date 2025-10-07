@@ -3,9 +3,18 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 
+// 🚀 Skip everything when deployed on Render
+if (process.env.RENDER || process.env.NODE_ENV === "production") {
+  console.log("🛑 Render/production environment detected — skipping frontend Zod sync.");
+  process.exit(0);
+}
 // Paths
 const backendZodDir = path.resolve("src/generated/zod");
 const frontendDir = path.resolve("../front-commerce");
+if (!fs.existsSync(frontendDir)) {
+  console.warn("⚠️ Frontend repo not found. Skipping frontend sync.");
+  process.exit(0); // do not fail build
+}
 const frontendZodDir = path.join(frontendDir, "src/generated/zod");
 
 // Helper: copy recursively

@@ -4,8 +4,8 @@ services:
     env: node
     region: frankfurt
     plan: free
-    buildCommand: "npm ci && npm run prisma:generate && nest build"
-    startCommand: "npx prisma migrate deploy && node dist/src/main.js"
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm run start:prod"
     envVars:
       - key: DATABASE_URL
         fromService:
