@@ -11,6 +11,7 @@ async function bootstrap() {
         origin: [
             process.env.FRONTEND_URL,
             'https://front-commerce-rust.vercel.app',
+            /\.vercel\.app$/,
         ],
         credentials: true,
     });

@@ -8,7 +8,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       process.env.FRONTEND_URL,
-      'https://front-commerce-rust.vercel.app',
+      'https://front-commerce-rust.vercel.app', // fallback old domain
+      /\.vercel\.app$/, // allow any vercel.app subdomain
     ],
     credentials: true,
   });
