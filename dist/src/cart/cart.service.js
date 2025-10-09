@@ -120,6 +120,49 @@ let CartService = class CartService {
         await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
         return this.findCartByUser(userId);
     }
+    async verifyCart(userId) {
+        const cart = await this.prisma.cart.findFirst({
+            where: { userId },
+            include: { items: { include: { product: true } } },
+        });
+        if (!cart)
+            throw new common_1.NotFoundException('Cart not found');
+        const invalidItems = [];
+        const items = cart.items.map((item) => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+            let reason;
+            if (!item.product) {
+                reason = 'Product removed';
+            }
+            else if (item.quantity > item.product.stock) {
+                reason = `Only ${item.product.stock} left in stock`;
+            }
+            if (reason)
+                invalidItems.push({ id: item.id, reason });
+            return {
+                id: item.id,
+                productId: item.productId,
+                productName: (_c = (_a = item.productName) !== null && _a !== void 0 ? _a : (_b = item.product) === null || _b === void 0 ? void 0 : _b.name) !== null && _c !== void 0 ? _c : 'Unknown Product',
+                productImage: (_g = (_d = item.productImage) !== null && _d !== void 0 ? _d : (_f = (_e = item.product) === null || _e === void 0 ? void 0 : _e.images) === null || _f === void 0 ? void 0 : _f[0]) !== null && _g !== void 0 ? _g : null,
+                price: (_k = (_h = item.productPrice) !== null && _h !== void 0 ? _h : (_j = item.product) === null || _j === void 0 ? void 0 : _j.price) !== null && _k !== void 0 ? _k : 0,
+                quantity: item.quantity,
+                subtotal: ((_o = (_l = item.productPrice) !== null && _l !== void 0 ? _l : (_m = item.product) === null || _m === void 0 ? void 0 : _m.price) !== null && _o !== void 0 ? _o : 0) * item.quantity,
+                reason,
+            };
+        });
+        const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
+        const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
+        return {
+            cartId: cart.id,
+            userId: cart.userId,
+            items,
+            subtotal,
+            totalQuantity,
+            invalidItems,
+            isValid: invalidItems.length === 0,
+            verifiedAt: new Date(),
+        };
+    }
 };
 exports.CartService = CartService;
 exports.CartService = CartService = __decorate([

@@ -88,4 +88,5 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
+    verify(userId: string): Promise<import("./types/verify-cart.types").VerifiedCartResponse>;
 }

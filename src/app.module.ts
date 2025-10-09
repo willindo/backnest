@@ -7,6 +7,7 @@ import { CartModule } from './cart/cart.module';
 import { ProductsModule } from './products/product.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
     UsersModule,
     ProductsModule,
     CartModule,
+    CheckoutModule,
     OrdersModule,
   ],
   controllers: [AppController],

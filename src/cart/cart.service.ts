@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { AddToCartDto, UpdateCartItemDto, CartDto, CartItemDto } from './dto';
 import { Prisma } from '@prisma/client';
+import { VerifiedCartResponse, VerifiedItem } from './types/verify-cart.types';
 
 @Injectable()
 export class CartService {
@@ -128,5 +129,56 @@ export class CartService {
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
     return this.findCartByUser(userId);
+  }
+  async verifyCart(userId: string): Promise<VerifiedCartResponse> {
+    const cart = await this.prisma.cart.findFirst({
+      where: { userId },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!cart) throw new NotFoundException('Cart not found');
+
+    const invalidItems: { id: string; reason: string }[] = [];
+    const items: VerifiedItem[] = cart.items.map((item) => {
+      let reason: string | undefined;
+
+      // Check if product exists
+      if (!item.product) {
+        reason = 'Product removed';
+      }
+      // Check stock
+      else if (item.quantity > item.product.stock) {
+        reason = `Only ${item.product.stock} left in stock`;
+      }
+
+      if (reason) invalidItems.push({ id: item.id, reason });
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        productName:
+          item.productName ?? item.product?.name ?? 'Unknown Product',
+        productImage: item.productImage ?? item.product?.images?.[0] ?? null,
+        price: item.productPrice ?? item.product?.price ?? 0,
+        quantity: item.quantity,
+        subtotal:
+          (item.productPrice ?? item.product?.price ?? 0) * item.quantity,
+        reason,
+      };
+    });
+
+    const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
+    const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
+
+    return {
+      cartId: cart.id,
+      userId: cart.userId,
+      items,
+      subtotal,
+      totalQuantity,
+      invalidItems,
+      isValid: invalidItems.length === 0,
+      verifiedAt: new Date(),
+    };
   }
 }

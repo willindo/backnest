@@ -44,4 +44,8 @@ export class CartController {
   async clear(@Param('userId') userId: string) {
     return this.cartService.clear(userId);
   }
+  @Get(':userId/verify')
+  async verify(@Param('userId') userId: string) {
+    return this.cartService.verifyCart(userId);
+  }
 }

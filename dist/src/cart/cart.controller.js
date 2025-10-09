@@ -35,6 +35,9 @@ let CartController = class CartController {
     async clear(userId) {
         return this.cartService.clear(userId);
     }
+    async verify(userId) {
+        return this.cartService.verifyCart(userId);
+    }
 };
 exports.CartController = CartController;
 __decorate([
@@ -75,6 +78,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "clear", null);
+__decorate([
+    (0, common_1.Get)(':userId/verify'),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], CartController.prototype, "verify", null);
 exports.CartController = CartController = __decorate([
     (0, common_1.Controller)('cart'),
     __metadata("design:paramtypes", [cart_service_1.CartService])

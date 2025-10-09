@@ -16,6 +16,7 @@ const cart_module_1 = require("./cart/cart.module");
 const product_module_1 = require("./products/product.module");
 const users_module_1 = require("./users/users.module");
 const auth_module_1 = require("./auth/auth.module");
+const checkout_module_1 = require("./checkout/checkout.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,6 +28,7 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             product_module_1.ProductsModule,
             cart_module_1.CartModule,
+            checkout_module_1.CheckoutModule,
             orders_module_1.OrdersModule,
         ],
         controllers: [app_controller_1.AppController],
