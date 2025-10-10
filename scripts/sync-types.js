@@ -3,122 +3,89 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 
-// ---------------------------------------------------------
-// 🚫 1. Skip in production (Render, CI, or NODE_ENV=production)
-// ---------------------------------------------------------
+// 🚀 Skip everything when deployed on Render
 if (process.env.RENDER || process.env.NODE_ENV === "production") {
-  console.log("🛑 Render/production environment detected — skipping sync.");
+  console.log("🛑 Render/production environment detected — skipping frontend Zod sync.");
   process.exit(0);
 }
+// Paths
+const backendZodDir = path.resolve("src/generated/zod");
+const frontendDir = path.resolve("../front-commerce");
+if (!fs.existsSync(frontendDir)) {
+  console.warn("⚠️ Frontend repo not found. Skipping frontend sync.");
+  process.exit(0); // do not fail build
+}
+const frontendZodDir = path.join(frontendDir, "src/generated/zod");
 
-// ---------------------------------------------------------
-// 📂 2. Paths setup
-// ---------------------------------------------------------
-const backendRoot = path.resolve(".");
-const backendZodDir = path.join(backendRoot, "src/generated/zod");
-const backendDtoDir = path.join(backendRoot, "src"); // we’ll scan dto/ folders recursively
-const frontendRoot = path.resolve("../front-commerce");
-const frontendZodDir = path.join(frontendRoot, "src/generated/zod");
-const frontendDtoDir = path.join(frontendRoot, "src/shared/dto");
-
-// ---------------------------------------------------------
-// 🧰 3. Utility functions
-// ---------------------------------------------------------
+// Helper: copy recursively
 function copyDir(srcDir, destDir) {
   fs.mkdirSync(destDir, { recursive: true });
   for (const item of fs.readdirSync(srcDir, { withFileTypes: true })) {
     const src = path.join(srcDir, item.name);
     const dest = path.join(destDir, item.name);
-    if (item.isDirectory()) copyDir(src, dest);
-    else fs.copyFileSync(src, dest);
+    if (item.isDirectory()) {
+      copyDir(src, dest);
+    } else {
+      fs.copyFileSync(src, dest);
+    }
   }
 }
 
+// Helper: strip Prisma types
 function stripPrismaTypes(dir) {
-  if (!fs.existsSync(dir)) return;
   for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
     const filePath = path.join(dir, item.name);
     if (item.isDirectory()) {
       stripPrismaTypes(filePath);
     } else if (filePath.endsWith(".ts")) {
       let content = fs.readFileSync(filePath, "utf-8");
+      // Remove imports from @prisma/client
       content = content.replace(/import\s+.*?@prisma\/client.*;\n/g, "");
+      // Replace all Prisma.* types with any
       content = content.replace(/\bPrisma\.[a-zA-Z0-9_]+\b/g, "any");
       fs.writeFileSync(filePath, content);
     }
   }
 }
 
-// ---------------------------------------------------------
-// 🔄 4. Sync frontend Prisma client version
-// ---------------------------------------------------------
+// Helper: sync frontend @prisma/client version
 function syncPrismaVersion() {
   const backendPkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf-8"));
-  const backendVersion =
+  const backendPrismaVersion =
     backendPkg.dependencies?.["@prisma/client"] || backendPkg.devDependencies?.["@prisma/client"];
-  if (!backendVersion) return;
 
-  const frontendPkgPath = path.join(frontendRoot, "package.json");
+  if (!backendPrismaVersion) return;
+
+  const frontendPkgPath = path.join(frontendDir, "package.json");
   const frontendPkg = JSON.parse(fs.readFileSync(frontendPkgPath, "utf-8"));
+
   frontendPkg.devDependencies = frontendPkg.devDependencies || {};
-  frontendPkg.devDependencies["@prisma/client"] = backendVersion;
+  frontendPkg.devDependencies["@prisma/client"] = backendPrismaVersion;
 
   fs.writeFileSync(frontendPkgPath, JSON.stringify(frontendPkg, null, 2));
-  console.log(`🔗 Synced @prisma/client@${backendVersion} to frontend`);
+  console.log(`🔄 Synced @prisma/client@${backendPrismaVersion} to frontend`);
 
+  // Install frontend dev dependency
   try {
-    execSync("npm install --omit=optional", { cwd: frontendRoot, stdio: "inherit" });
+    execSync("npm install --omit=optional", { cwd: frontendDir, stdio: "inherit" });
   } catch (err) {
     console.warn("⚠️ Failed to install frontend @prisma/client", err);
   }
 }
 
-// ---------------------------------------------------------
-// 📦 5. Sync generated Zod schemas
-// ---------------------------------------------------------
+// Main
 if (fs.existsSync(backendZodDir)) {
   console.log("📦 Copying backend Zod schemas...");
   copyDir(backendZodDir, frontendZodDir);
+
+  console.log("🧹 Stripping Prisma types for frontend...");
   stripPrismaTypes(frontendZodDir);
-  console.log("✅ Zod schemas synced");
+
+  console.log("🔗 Syncing @prisma/client version...");
+  syncPrismaVersion();
+
+  console.log("✅ Zod types synced and frontend ready!");
 } else {
-  console.warn("⚠️ No backend Zod directory found. Run `npm run prisma:generate` first.");
+  console.error("❌ No backend Zod directory found. Run `npm run prisma:generate` first.");
+  process.exit(1);
 }
-
-// ---------------------------------------------------------
-// 🧩 6. Sync manual DTOs (e.g. checkout.dto.ts)
-// ---------------------------------------------------------
-function copyDtoFiles(srcDir, destDir) {
-  fs.mkdirSync(destDir, { recursive: true });
-  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(srcDir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "dto") {
-        const dtoDest = path.join(destDir, srcDir.split("src/")[1]);
-        fs.mkdirSync(dtoDest, { recursive: true });
-        for (const file of fs.readdirSync(srcPath)) {
-          if (file.endsWith(".dto.ts")) {
-            const srcFile = path.join(srcPath, file);
-            const destFile = path.join(dtoDest, file);
-            fs.copyFileSync(srcFile, destFile);
-          }
-        }
-      } else {
-        copyDtoFiles(srcPath, destDir);
-      }
-    }
-  }
-}
-
-console.log("🧩 Syncing manual DTOs (checkout, auth, etc.)...");
-copyDtoFiles(backendDtoDir, frontendDtoDir);
-console.log("✅ DTOs synced to frontend");
-
-// ---------------------------------------------------------
-// 🧭 7. Sync Prisma client version (optional but nice)
-// ---------------------------------------------------------
-console.log("🔄 Syncing @prisma/client version...");
-syncPrismaVersion();
-
-console.log("\n🎉 All types and DTOs synced successfully!");
