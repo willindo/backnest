@@ -1,9 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { json, urlencoded, raw } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableCors({
     origin: [
@@ -13,6 +16,8 @@ async function bootstrap() {
     ],
     credentials: true,
   });
+
+  app.use('/payments/webhook', raw({ type: '*/*' }));
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important
 }
 bootstrap();

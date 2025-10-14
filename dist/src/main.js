@@ -3,9 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
+const express_1 = require("express");
 async function bootstrap() {
     var _a;
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.use((0, express_1.json)({ limit: '1mb' }));
+    app.use((0, express_1.urlencoded)({ extended: true }));
     app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, transform: true }));
     app.enableCors({
         origin: [
@@ -15,6 +18,7 @@ async function bootstrap() {
         ],
         credentials: true,
     });
+    app.use('/payments/webhook', (0, express_1.raw)({ type: '*/*' }));
     await app.listen((_a = process.env.PORT) !== null && _a !== void 0 ? _a : 3001, '0.0.0.0');
 }
 bootstrap();

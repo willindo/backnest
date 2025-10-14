@@ -1,3 +1,5 @@
+rzp_live_RSdqJwUqBHuiYN = Live Key ID
+mwPTjkqRTtsPsTucNyNK75Lg =Live Key Secret
  ls -a ~/
 cat << 'EOF' >> ~/.zshrc
 content 

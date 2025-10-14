@@ -1,8 +1,10 @@
+// src/cart/cart.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
-import { AddToCartDto, UpdateCartItemDto, CartDto, CartItemDto } from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AddToCartDto, UpdateCartItemDto, CartDto } from './dto';
 import { Prisma } from '@prisma/client';
 import { VerifiedCartResponse, VerifiedItem } from './types/verify-cart.types';
+import { Size } from '@prisma/client';
 
 @Injectable()
 export class CartService {
@@ -25,13 +27,10 @@ export class CartService {
         quantity: item.quantity,
         product: {
           name: item.productName ?? item.product?.name ?? 'Unknown Product',
-          price: item.productPrice ?? item.product?.price ?? 0,
+          price: Number(item.productPrice ?? item.product?.price ?? 0),
           description:
             item.productDescription ?? item.product?.description ?? null,
           image: item.productImage ?? item.product?.images?.[0] ?? null,
-
-          createdAt: cart.createdAt.toISOString(),
-          updatedAt: cart.updatedAt.toISOString(),
         },
       })),
     };
@@ -59,7 +58,11 @@ export class CartService {
     return this.mapCart(cart);
   }
 
-  async add(userId: string, dto: AddToCartDto): Promise<CartDto> {
+  /** Add item to cart (handles nullable size safely) */
+  async add(
+    userId: string,
+    dto: AddToCartDto & { size?: string | null },
+  ): Promise<CartDto> {
     let cart = await this.prisma.cart.findFirst({ where: { userId } });
     if (!cart) cart = await this.prisma.cart.create({ data: { userId } });
 
@@ -68,21 +71,56 @@ export class CartService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    await this.prisma.cartItem.upsert({
-      where: {
-        cartId_productId: { cartId: cart.id, productId: dto.productId },
-      },
-      update: { quantity: { increment: dto.quantity } },
-      create: {
-        cartId: cart.id,
-        productId: dto.productId,
-        quantity: dto.quantity,
-        productName: product.name,
-        productPrice: product.price,
-        productDescription: product.description,
-        productImage: product.images.length > 0 ? product.images[0] : null,
-      },
-    });
+    const sizeValue = dto.size ? (dto.size as Size) : null;
+
+    if (sizeValue) {
+      // If size exists, use compound unique upsert
+      await this.prisma.cartItem.upsert({
+        where: {
+          cartId_productId_size: {
+            cartId: cart.id,
+            productId: dto.productId,
+            size: sizeValue,
+          },
+        },
+        update: { quantity: { increment: dto.quantity } },
+        create: {
+          cartId: cart.id,
+          productId: dto.productId,
+          size: sizeValue,
+          quantity: dto.quantity,
+          productName: product.name,
+          productPrice: product.price,
+          productDescription: product.description,
+          productImage: product.images.length > 0 ? product.images[0] : null,
+        },
+      });
+    } else {
+      // If size is null, manually check for existing item
+      const existing = await this.prisma.cartItem.findFirst({
+        where: { cartId: cart.id, productId: dto.productId, size: null },
+      });
+
+      if (existing) {
+        await this.prisma.cartItem.update({
+          where: { id: existing.id },
+          data: { quantity: { increment: dto.quantity } },
+        });
+      } else {
+        await this.prisma.cartItem.create({
+          data: {
+            cartId: cart.id,
+            productId: dto.productId,
+            size: null,
+            quantity: dto.quantity,
+            productName: product.name,
+            productPrice: product.price,
+            productDescription: product.description,
+            productImage: product.images.length > 0 ? product.images[0] : null,
+          },
+        });
+      }
+    }
 
     return this.findCartByUser(userId);
   }
@@ -94,15 +132,13 @@ export class CartService {
     const item = await this.prisma.cartItem.findUnique({
       where: { id: dto.itemId },
     });
-    if (!item || item.cartId !== cart.id) {
+    if (!item || item.cartId !== cart.id)
       throw new NotFoundException('Cart item not found');
-    }
 
     await this.prisma.cartItem.update({
       where: { id: dto.itemId },
       data: { quantity: dto.quantity },
     });
-
     return this.findCartByUser(userId);
   }
 
@@ -113,12 +149,10 @@ export class CartService {
     const item = await this.prisma.cartItem.findUnique({
       where: { id: itemId },
     });
-    if (!item || item.cartId !== cart.id) {
+    if (!item || item.cartId !== cart.id)
       throw new NotFoundException('Cart item not found');
-    }
 
     await this.prisma.cartItem.delete({ where: { id: itemId } });
-
     return this.findCartByUser(userId);
   }
 
@@ -127,29 +161,32 @@ export class CartService {
     if (!cart) throw new NotFoundException('Cart not found');
 
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-
     return this.findCartByUser(userId);
   }
+
   async verifyCart(userId: string): Promise<VerifiedCartResponse> {
     const cart = await this.prisma.cart.findFirst({
       where: { userId },
       include: { items: { include: { product: true } } },
     });
-
     if (!cart) throw new NotFoundException('Cart not found');
 
     const invalidItems: { id: string; reason: string }[] = [];
+
     const items: VerifiedItem[] = cart.items.map((item) => {
+      const priceNum = Number(item.productPrice ?? item.product?.price ?? 0);
+      const subtotal = priceNum * item.quantity;
       let reason: string | undefined;
 
-      // Check if product exists
-      if (!item.product) {
-        reason = 'Product removed';
-      }
-      // Check stock
-      else if (item.quantity > item.product.stock) {
+      if (!item.product) reason = 'Product removed';
+      else if (
+        item.size &&
+        typeof item.size === 'string' &&
+        item.quantity > item.product.stock
+      )
         reason = `Only ${item.product.stock} left in stock`;
-      }
+      else if (!item.size && item.quantity > item.product.stock)
+        reason = `Only ${item.product.stock} left in stock`;
 
       if (reason) invalidItems.push({ id: item.id, reason });
 
@@ -159,10 +196,9 @@ export class CartService {
         productName:
           item.productName ?? item.product?.name ?? 'Unknown Product',
         productImage: item.productImage ?? item.product?.images?.[0] ?? null,
-        price: item.productPrice ?? item.product?.price ?? 0,
+        price: priceNum,
         quantity: item.quantity,
-        subtotal:
-          (item.productPrice ?? item.product?.price ?? 0) * item.quantity,
+        subtotal,
         reason,
       };
     });

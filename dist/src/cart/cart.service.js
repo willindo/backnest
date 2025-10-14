@@ -30,11 +30,9 @@ let CartService = class CartService {
                     quantity: item.quantity,
                     product: {
                         name: (_c = (_a = item.productName) !== null && _a !== void 0 ? _a : (_b = item.product) === null || _b === void 0 ? void 0 : _b.name) !== null && _c !== void 0 ? _c : 'Unknown Product',
-                        price: (_f = (_d = item.productPrice) !== null && _d !== void 0 ? _d : (_e = item.product) === null || _e === void 0 ? void 0 : _e.price) !== null && _f !== void 0 ? _f : 0,
+                        price: Number((_f = (_d = item.productPrice) !== null && _d !== void 0 ? _d : (_e = item.product) === null || _e === void 0 ? void 0 : _e.price) !== null && _f !== void 0 ? _f : 0),
                         description: (_j = (_g = item.productDescription) !== null && _g !== void 0 ? _g : (_h = item.product) === null || _h === void 0 ? void 0 : _h.description) !== null && _j !== void 0 ? _j : null,
                         image: (_o = (_k = item.productImage) !== null && _k !== void 0 ? _k : (_m = (_l = item.product) === null || _l === void 0 ? void 0 : _l.images) === null || _m === void 0 ? void 0 : _m[0]) !== null && _o !== void 0 ? _o : null,
-                        createdAt: cart.createdAt.toISOString(),
-                        updatedAt: cart.updatedAt.toISOString(),
                     },
                 });
             }),
@@ -67,21 +65,54 @@ let CartService = class CartService {
         });
         if (!product)
             throw new common_1.NotFoundException('Product not found');
-        await this.prisma.cartItem.upsert({
-            where: {
-                cartId_productId: { cartId: cart.id, productId: dto.productId },
-            },
-            update: { quantity: { increment: dto.quantity } },
-            create: {
-                cartId: cart.id,
-                productId: dto.productId,
-                quantity: dto.quantity,
-                productName: product.name,
-                productPrice: product.price,
-                productDescription: product.description,
-                productImage: product.images.length > 0 ? product.images[0] : null,
-            },
-        });
+        const sizeValue = dto.size ? dto.size : null;
+        if (sizeValue) {
+            await this.prisma.cartItem.upsert({
+                where: {
+                    cartId_productId_size: {
+                        cartId: cart.id,
+                        productId: dto.productId,
+                        size: sizeValue,
+                    },
+                },
+                update: { quantity: { increment: dto.quantity } },
+                create: {
+                    cartId: cart.id,
+                    productId: dto.productId,
+                    size: sizeValue,
+                    quantity: dto.quantity,
+                    productName: product.name,
+                    productPrice: product.price,
+                    productDescription: product.description,
+                    productImage: product.images.length > 0 ? product.images[0] : null,
+                },
+            });
+        }
+        else {
+            const existing = await this.prisma.cartItem.findFirst({
+                where: { cartId: cart.id, productId: dto.productId, size: null },
+            });
+            if (existing) {
+                await this.prisma.cartItem.update({
+                    where: { id: existing.id },
+                    data: { quantity: { increment: dto.quantity } },
+                });
+            }
+            else {
+                await this.prisma.cartItem.create({
+                    data: {
+                        cartId: cart.id,
+                        productId: dto.productId,
+                        size: null,
+                        quantity: dto.quantity,
+                        productName: product.name,
+                        productPrice: product.price,
+                        productDescription: product.description,
+                        productImage: product.images.length > 0 ? product.images[0] : null,
+                    },
+                });
+            }
+        }
         return this.findCartByUser(userId);
     }
     async update(userId, dto) {
@@ -91,9 +122,8 @@ let CartService = class CartService {
         const item = await this.prisma.cartItem.findUnique({
             where: { id: dto.itemId },
         });
-        if (!item || item.cartId !== cart.id) {
+        if (!item || item.cartId !== cart.id)
             throw new common_1.NotFoundException('Cart item not found');
-        }
         await this.prisma.cartItem.update({
             where: { id: dto.itemId },
             data: { quantity: dto.quantity },
@@ -107,9 +137,8 @@ let CartService = class CartService {
         const item = await this.prisma.cartItem.findUnique({
             where: { id: itemId },
         });
-        if (!item || item.cartId !== cart.id) {
+        if (!item || item.cartId !== cart.id)
             throw new common_1.NotFoundException('Cart item not found');
-        }
         await this.prisma.cartItem.delete({ where: { id: itemId } });
         return this.findCartByUser(userId);
     }
@@ -129,24 +158,28 @@ let CartService = class CartService {
             throw new common_1.NotFoundException('Cart not found');
         const invalidItems = [];
         const items = cart.items.map((item) => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+            const priceNum = Number((_c = (_a = item.productPrice) !== null && _a !== void 0 ? _a : (_b = item.product) === null || _b === void 0 ? void 0 : _b.price) !== null && _c !== void 0 ? _c : 0);
+            const subtotal = priceNum * item.quantity;
             let reason;
-            if (!item.product) {
+            if (!item.product)
                 reason = 'Product removed';
-            }
-            else if (item.quantity > item.product.stock) {
+            else if (item.size &&
+                typeof item.size === 'string' &&
+                item.quantity > item.product.stock)
                 reason = `Only ${item.product.stock} left in stock`;
-            }
+            else if (!item.size && item.quantity > item.product.stock)
+                reason = `Only ${item.product.stock} left in stock`;
             if (reason)
                 invalidItems.push({ id: item.id, reason });
             return {
                 id: item.id,
                 productId: item.productId,
-                productName: (_c = (_a = item.productName) !== null && _a !== void 0 ? _a : (_b = item.product) === null || _b === void 0 ? void 0 : _b.name) !== null && _c !== void 0 ? _c : 'Unknown Product',
-                productImage: (_g = (_d = item.productImage) !== null && _d !== void 0 ? _d : (_f = (_e = item.product) === null || _e === void 0 ? void 0 : _e.images) === null || _f === void 0 ? void 0 : _f[0]) !== null && _g !== void 0 ? _g : null,
-                price: (_k = (_h = item.productPrice) !== null && _h !== void 0 ? _h : (_j = item.product) === null || _j === void 0 ? void 0 : _j.price) !== null && _k !== void 0 ? _k : 0,
+                productName: (_f = (_d = item.productName) !== null && _d !== void 0 ? _d : (_e = item.product) === null || _e === void 0 ? void 0 : _e.name) !== null && _f !== void 0 ? _f : 'Unknown Product',
+                productImage: (_k = (_g = item.productImage) !== null && _g !== void 0 ? _g : (_j = (_h = item.product) === null || _h === void 0 ? void 0 : _h.images) === null || _j === void 0 ? void 0 : _j[0]) !== null && _k !== void 0 ? _k : null,
+                price: priceNum,
                 quantity: item.quantity,
-                subtotal: ((_o = (_l = item.productPrice) !== null && _l !== void 0 ? _l : (_m = item.product) === null || _m === void 0 ? void 0 : _m.price) !== null && _o !== void 0 ? _o : 0) * item.quantity,
+                subtotal,
                 reason,
             };
         });

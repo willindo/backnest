@@ -17,12 +17,15 @@ const product_module_1 = require("./products/product.module");
 const users_module_1 = require("./users/users.module");
 const auth_module_1 = require("./auth/auth.module");
 const checkout_module_1 = require("./checkout/checkout.module");
+const payments_module_1 = require("./payments/payments.module");
+const config_1 = require("@nestjs/config");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            config_1.ConfigModule.forRoot({ isGlobal: true }),
             prisma_module_1.PrismaModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
@@ -30,6 +33,7 @@ exports.AppModule = AppModule = __decorate([
             cart_module_1.CartModule,
             checkout_module_1.CheckoutModule,
             orders_module_1.OrdersModule,
+            payments_module_1.PaymentsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

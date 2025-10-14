@@ -13,10 +13,10 @@ export const InvalidCartItemSchema = z.object({
 /**
  * ✅ Response DTO for verifyCart()
  */
-export const VerifyCartResponseSchema = z.object({
-  isValid: z.boolean(),
-  invalidItems: z.array(InvalidCartItemSchema),
-});
+// export const VerifyCartResponseSchema = z.object({
+//   isValid: z.boolean(),
+//   invalidItems: z.array(InvalidCartItemSchema),
+// });
 
 export type InvalidCartItem = z.infer<typeof InvalidCartItemSchema>;
-export type VerifyCartResponse = z.infer<typeof VerifyCartResponseSchema>;
+// export type VerifyCartResponse = z.infer<typeof VerifyCartResponseSchema>;

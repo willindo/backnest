@@ -4,9 +4,9 @@ import { z } from 'zod';
 export const AddToCartDto = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().positive(),
+  size: z.enum(['XS', 'S', 'M', 'L', 'XL', 'XXL']).nullable().optional(),
 });
 export type AddToCartDto = z.infer<typeof AddToCartDto>;
-
 // Update Cart Item DTO
 export const UpdateCartItemDto = z.object({
   itemId: z.string().uuid(),
