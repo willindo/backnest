@@ -20,69 +20,75 @@ let CartController = class CartController {
     constructor(cartService) {
         this.cartService = cartService;
     }
-    async findCart(userId) {
+    async findCart(req) {
+        const userId = req.user.id;
         return this.cartService.findCartByUser(userId);
     }
-    async add(userId, dto) {
+    async add(req, dto) {
+        const userId = req.user.id;
         return this.cartService.add(userId, dto);
     }
-    async update(userId, dto) {
+    async update(req, dto) {
+        const userId = req.user.id;
         return this.cartService.update(userId, dto);
     }
-    async remove(userId, itemId) {
+    async remove(req, itemId) {
+        const userId = req.user.id;
         return this.cartService.remove(userId, itemId);
     }
-    async clear(userId) {
+    async clear(req) {
+        const userId = req.user.id;
         return this.cartService.clear(userId);
     }
-    async verify(userId) {
+    async verify(req) {
+        const userId = req.user.id;
         return this.cartService.verifyCart(userId);
     }
 };
 exports.CartController = CartController;
 __decorate([
-    (0, common_1.Get)(':userId'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "findCart", null);
 __decorate([
-    (0, common_1.Post)(':userId/add'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Post)('add'),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "add", null);
 __decorate([
-    (0, common_1.Put)(':userId/update'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Put)('update'),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "update", null);
 __decorate([
-    (0, common_1.Delete)(':userId/item/:itemId'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Delete)('item/:itemId'),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('itemId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "remove", null);
 __decorate([
-    (0, common_1.Delete)(':userId/clear'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Delete)('clear'),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "clear", null);
 __decorate([
-    (0, common_1.Get)(':userId/verify'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Get)('verify'),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "verify", null);
 exports.CartController = CartController = __decorate([

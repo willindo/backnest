@@ -10,7 +10,6 @@ import { Size } from '@prisma/client';
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  /** Map Prisma cart & cart items → CartDto */
   private mapCart(
     cart: Prisma.CartGetPayload<{
       include: { items: { include: { product: true } } };
@@ -37,12 +36,7 @@ export class CartService {
   }
 
   async findCartByUser(userId: string): Promise<CartDto> {
-    const userExists = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-    if (!userExists)
-      throw new NotFoundException(`User ${userId} does not exist`);
-
+    // No need for explicit user check
     let cart = await this.prisma.cart.findFirst({
       where: { userId },
       include: { items: { include: { product: true } } },
@@ -58,7 +52,6 @@ export class CartService {
     return this.mapCart(cart);
   }
 
-  /** Add item to cart (handles nullable size safely) */
   async add(
     userId: string,
     dto: AddToCartDto & { size?: string | null },
@@ -71,10 +64,9 @@ export class CartService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    const sizeValue = dto.size ? (dto.size as Size) : null;
+    const sizeValue = dto.size ?? null;
 
     if (sizeValue) {
-      // If size exists, use compound unique upsert
       await this.prisma.cartItem.upsert({
         where: {
           cartId_productId_size: {
@@ -92,15 +84,13 @@ export class CartService {
           productName: product.name,
           productPrice: product.price,
           productDescription: product.description,
-          productImage: product.images.length > 0 ? product.images[0] : null,
+          productImage: product.images[0] ?? null,
         },
       });
     } else {
-      // If size is null, manually check for existing item
       const existing = await this.prisma.cartItem.findFirst({
         where: { cartId: cart.id, productId: dto.productId, size: null },
       });
-
       if (existing) {
         await this.prisma.cartItem.update({
           where: { id: existing.id },
@@ -116,7 +106,7 @@ export class CartService {
             productName: product.name,
             productPrice: product.price,
             productDescription: product.description,
-            productImage: product.images.length > 0 ? product.images[0] : null,
+            productImage: product.images[0] ?? null,
           },
         });
       }
@@ -179,13 +169,7 @@ export class CartService {
       let reason: string | undefined;
 
       if (!item.product) reason = 'Product removed';
-      else if (
-        item.size &&
-        typeof item.size === 'string' &&
-        item.quantity > item.product.stock
-      )
-        reason = `Only ${item.product.stock} left in stock`;
-      else if (!item.size && item.quantity > item.product.stock)
+      else if (item.quantity > item.product.stock)
         reason = `Only ${item.product.stock} left in stock`;
 
       if (reason) invalidItems.push({ id: item.id, reason });

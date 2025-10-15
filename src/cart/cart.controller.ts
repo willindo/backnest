@@ -6,6 +6,8 @@ import {
   Delete,
   Body,
   Param,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddToCartDto, UpdateCartItemDto } from './dto';
@@ -14,38 +16,45 @@ import { AddToCartDto, UpdateCartItemDto } from './dto';
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
-  @Get(':userId')
-  async findCart(@Param('userId') userId: string) {
+  /** Get current user's cart */
+  @Get()
+  async findCart(@Req() req: any) {
+    const userId = req.user.id;
     return this.cartService.findCartByUser(userId);
   }
 
-  @Post(':userId/add')
-  async add(@Param('userId') userId: string, @Body() dto: AddToCartDto) {
+  /** Add item to cart */
+  @Post('add')
+  async add(@Req() req: any, @Body() dto: AddToCartDto) {
+    const userId = req.user.id;
     return this.cartService.add(userId, dto);
   }
 
-  @Put(':userId/update')
-  async update(
-    @Param('userId') userId: string,
-    @Body() dto: UpdateCartItemDto,
-  ) {
+  /** Update cart item */
+  @Put('update')
+  async update(@Req() req: any, @Body() dto: UpdateCartItemDto) {
+    const userId = req.user.id;
     return this.cartService.update(userId, dto);
   }
 
-  @Delete(':userId/item/:itemId')
-  async remove(
-    @Param('userId') userId: string,
-    @Param('itemId') itemId: string,
-  ) {
+  /** Remove cart item */
+  @Delete('item/:itemId')
+  async remove(@Req() req: any, @Param('itemId') itemId: string) {
+    const userId = req.user.id;
     return this.cartService.remove(userId, itemId);
   }
 
-  @Delete(':userId/clear')
-  async clear(@Param('userId') userId: string) {
+  /** Clear entire cart */
+  @Delete('clear')
+  async clear(@Req() req: any) {
+    const userId = req.user.id;
     return this.cartService.clear(userId);
   }
-  @Get(':userId/verify')
-  async verify(@Param('userId') userId: string) {
+
+  /** Verify cart (stock & removed products) */
+  @Get('verify')
+  async verify(@Req() req: any) {
+    const userId = req.user.id;
     return this.cartService.verifyCart(userId);
   }
 }

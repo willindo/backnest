@@ -39,11 +39,6 @@ let CartService = class CartService {
         };
     }
     async findCartByUser(userId) {
-        const userExists = await this.prisma.user.findUnique({
-            where: { id: userId },
-        });
-        if (!userExists)
-            throw new common_1.NotFoundException(`User ${userId} does not exist`);
         let cart = await this.prisma.cart.findFirst({
             where: { userId },
             include: { items: { include: { product: true } } },
@@ -57,6 +52,7 @@ let CartService = class CartService {
         return this.mapCart(cart);
     }
     async add(userId, dto) {
+        var _a, _b, _c;
         let cart = await this.prisma.cart.findFirst({ where: { userId } });
         if (!cart)
             cart = await this.prisma.cart.create({ data: { userId } });
@@ -65,7 +61,7 @@ let CartService = class CartService {
         });
         if (!product)
             throw new common_1.NotFoundException('Product not found');
-        const sizeValue = dto.size ? dto.size : null;
+        const sizeValue = (_a = dto.size) !== null && _a !== void 0 ? _a : null;
         if (sizeValue) {
             await this.prisma.cartItem.upsert({
                 where: {
@@ -84,7 +80,7 @@ let CartService = class CartService {
                     productName: product.name,
                     productPrice: product.price,
                     productDescription: product.description,
-                    productImage: product.images.length > 0 ? product.images[0] : null,
+                    productImage: (_b = product.images[0]) !== null && _b !== void 0 ? _b : null,
                 },
             });
         }
@@ -108,7 +104,7 @@ let CartService = class CartService {
                         productName: product.name,
                         productPrice: product.price,
                         productDescription: product.description,
-                        productImage: product.images.length > 0 ? product.images[0] : null,
+                        productImage: (_c = product.images[0]) !== null && _c !== void 0 ? _c : null,
                     },
                 });
             }
@@ -164,11 +160,7 @@ let CartService = class CartService {
             let reason;
             if (!item.product)
                 reason = 'Product removed';
-            else if (item.size &&
-                typeof item.size === 'string' &&
-                item.quantity > item.product.stock)
-                reason = `Only ${item.product.stock} left in stock`;
-            else if (!item.size && item.quantity > item.product.stock)
+            else if (item.quantity > item.product.stock)
                 reason = `Only ${item.product.stock} left in stock`;
             if (reason)
                 invalidItems.push({ id: item.id, reason });

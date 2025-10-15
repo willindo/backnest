@@ -57,9 +57,11 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const prisma_service_1 = require("../../prisma/prisma.service");
+const jwt_1 = require("@nestjs/jwt");
 let AuthService = class AuthService {
-    constructor(prisma) {
+    constructor(prisma, jwt) {
         this.prisma = prisma;
+        this.jwt = jwt;
     }
     async register(email, password, name) {
         const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -81,17 +83,32 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid credentials');
         return user;
     }
-    async login(user) {
+    async login(user, res) {
+        const payload = { sub: user.id };
+        const token = this.jwt.sign(payload, {
+            secret: process.env.JWT_SECRET,
+            expiresIn: process.env.JWT_EXPIRES_IN
+                ? parseInt(process.env.JWT_EXPIRES_IN)
+                : 7 * 24 * 60 * 60,
+        });
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' ? true : false,
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
         const { password } = user, safeUser = __rest(user, ["password"]);
-        return {
-            message: 'Login successful',
-            user: safeUser,
-        };
+        return { message: 'Login successful', user: safeUser, token };
+    }
+    async logout(res) {
+        res.clearCookie('auth_token');
+        return { message: 'Logged out' };
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        jwt_1.JwtService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

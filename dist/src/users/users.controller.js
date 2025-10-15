@@ -16,25 +16,35 @@ exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
 const users_service_1 = require("./users.service");
 const dto_1 = require("./dto");
+const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const client_1 = require("@prisma/client");
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
     }
+    async getMe(req) {
+        const user = req.user;
+        return { user: await this.usersService.findOne(user.id) };
+    }
     findAll(page = '1', limit = '20', role) {
-        let roleUnion;
-        if (role === 'ADMIN')
-            roleUnion = 'ADMIN';
-        else if (role === 'CUSTOMER')
-            roleUnion = 'CUSTOMER';
+        const roleUnion = role === 'ADMIN' ? 'ADMIN' : role === 'CUSTOMER' ? 'CUSTOMER' : undefined;
         return this.usersService.findAll(+page, +limit, roleUnion);
     }
-    findOne(id) {
+    findOne(id, req) {
+        const user = req.user;
+        if (user.role !== 'ADMIN' && user.id !== id) {
+            throw new common_1.ForbiddenException('Access denied');
+        }
         return this.usersService.findOne(id);
     }
     create(dto) {
         return this.usersService.create(dto);
     }
-    update(id, dto) {
+    update(id, dto, req) {
+        const user = req.user;
+        if (user.role !== 'ADMIN' && user.id !== id) {
+            throw new common_1.ForbiddenException('Access denied');
+        }
         return this.usersService.update(id, dto);
     }
     remove(id) {
@@ -43,7 +53,15 @@ let UsersController = class UsersController {
 };
 exports.UsersController = UsersController;
 __decorate([
+    (0, common_1.Get)('me'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getMe", null);
+__decorate([
     (0, common_1.Get)(),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
     __param(0, (0, common_1.Query)('page')),
     __param(1, (0, common_1.Query)('limit')),
     __param(2, (0, common_1.Query)('role')),
@@ -54,12 +72,14 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [dto_1.CreateUserDto]),
@@ -69,12 +89,14 @@ __decorate([
     (0, common_1.Put)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, dto_1.UpdateUserDto]),
+    __metadata("design:paramtypes", [String, dto_1.UpdateUserDto, Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

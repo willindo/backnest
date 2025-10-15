@@ -3,7 +3,7 @@ import { AddToCartDto, UpdateCartItemDto } from './dto';
 export declare class CartController {
     private readonly cartService;
     constructor(cartService: CartService);
-    findCart(userId: string): Promise<{
+    findCart(req: any): Promise<{
         id: string;
         userId: string;
         items: {
@@ -20,7 +20,7 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    add(userId: string, dto: AddToCartDto): Promise<{
+    add(req: any, dto: AddToCartDto): Promise<{
         id: string;
         userId: string;
         items: {
@@ -37,7 +37,7 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    update(userId: string, dto: UpdateCartItemDto): Promise<{
+    update(req: any, dto: UpdateCartItemDto): Promise<{
         id: string;
         userId: string;
         items: {
@@ -54,7 +54,7 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    remove(userId: string, itemId: string): Promise<{
+    remove(req: any, itemId: string): Promise<{
         id: string;
         userId: string;
         items: {
@@ -71,7 +71,7 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    clear(userId: string): Promise<{
+    clear(req: any): Promise<{
         id: string;
         userId: string;
         items: {
@@ -88,5 +88,5 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    verify(userId: string): Promise<import("./types/verify-cart.types").VerifiedCartResponse>;
+    verify(req: any): Promise<import("./types/verify-cart.types").VerifiedCartResponse>;
 }
