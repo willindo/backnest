@@ -15,6 +15,7 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { Request } from 'express';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('users')
 export class UsersController {

@@ -1,29 +1,35 @@
+// src/auth/auth.controller.ts
 import {
   Controller,
   Post,
   Body,
   Res,
   Get,
-  UseGuards,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto } from './dto';
 import { Response, Request } from 'express';
+import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
-import { Roles } from './decorators/roles.decorator';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(private readonly auth: AuthService) {}
 
+  // 🔹 Public endpoint — register new user + auto login
   @Public()
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto.email, dto.password, dto.name);
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = await this.auth.register(dto);
+    return this.auth.login(user, res); // auto-login for smoother UX
   }
 
+  // 🔹 Public endpoint — manual login
   @Public()
   @Post('login')
   async login(
@@ -34,16 +40,17 @@ export class AuthController {
     return this.auth.login(user, res);
   }
 
+  // 🔹 Logout — clears cookie on client
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
     return this.auth.logout(res);
   }
 
+  // 🔹 Authenticated endpoint — get logged-in user
   @Get('me')
-  // @Roles()
   async me(@Req() req: Request) {
     const user = req.user as any;
-    if (!user) throw new UnauthorizedException();
+    if (!user) throw new UnauthorizedException('Not authenticated');
     return { user };
   }
 }

@@ -19,6 +19,7 @@ async function bootstrap() {
         origin: [
             process.env.FRONTEND_URL,
             'http://localhost:3000',
+            'http://10.0.2.15:3000',
             'https://front-commerce-rust.vercel.app',
             /\.vercel\.app$/,
         ],

@@ -55,54 +55,67 @@ var __rest = (this && this.__rest) || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
-const bcrypt = __importStar(require("bcrypt"));
-const prisma_service_1 = require("../../prisma/prisma.service");
 const jwt_1 = require("@nestjs/jwt");
+const prisma_service_1 = require("../../prisma/prisma.service");
+const bcrypt = __importStar(require("bcrypt"));
 let AuthService = class AuthService {
     constructor(prisma, jwt) {
         this.prisma = prisma;
         this.jwt = jwt;
     }
-    async register(email, password, name) {
-        const existing = await this.prisma.user.findUnique({ where: { email } });
-        if (existing)
-            throw new common_1.ConflictException('Email already registered');
-        const hashed = await bcrypt.hash(password, 10);
-        const user = await this.prisma.user.create({
-            data: { email, password: hashed, name },
-        });
-        const { password: _pw } = user, rest = __rest(user, ["password"]);
-        return rest;
-    }
     async validateUser(email, password) {
         const user = await this.prisma.user.findUnique({ where: { email } });
         if (!user)
             throw new common_1.UnauthorizedException('Invalid credentials');
-        const match = await bcrypt.compare(password, user.password);
-        if (!match)
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid)
             throw new common_1.UnauthorizedException('Invalid credentials');
         return user;
     }
+    async register(dto) {
+        const existing = await this.prisma.user.findUnique({
+            where: { email: dto.email },
+        });
+        if (existing)
+            throw new common_1.BadRequestException('Email already in use');
+        const hash = await bcrypt.hash(dto.password, 10);
+        const user = await this.prisma.user.create({
+            data: {
+                email: dto.email,
+                password: hash,
+                name: dto.name,
+            },
+        });
+        return user;
+    }
     async login(user, res) {
-        const payload = { sub: user.id };
-        const token = this.jwt.sign(payload, {
+        const payload = { sub: user.id, email: user.email };
+        const signOptions = {
             secret: process.env.JWT_SECRET,
-            expiresIn: process.env.JWT_EXPIRES_IN
-                ? parseInt(process.env.JWT_EXPIRES_IN)
-                : 7 * 24 * 60 * 60,
-        });
-        res.cookie('auth_token', token, {
+        };
+        const token = this.jwt.sign(payload, signOptions);
+        const cookieOptions = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production' ? true : false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        };
+        res.cookie('auth_token', token, cookieOptions);
         const { password } = user, safeUser = __rest(user, ["password"]);
-        return { message: 'Login successful', user: safeUser, token };
+        return {
+            message: 'Login successful',
+            user: safeUser,
+        };
     }
     async logout(res) {
-        res.clearCookie('auth_token');
-        return { message: 'Logged out' };
+        res.clearCookie('auth_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/',
+        });
+        return { message: 'Logged out successfully' };
     }
 };
 exports.AuthService = AuthService;
