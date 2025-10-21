@@ -1,22 +1,22 @@
-// src/products/product.controller.ts
 import {
   Controller,
   Get,
   Post,
-  Put,
-  Delete,
   Body,
   Param,
-  UseGuards,
+  Delete,
+  Patch,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './product.service';
-import { CreateProductDto, UpdateProductDto } from './dto';
-import { Roles } from 'src/auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,36 +25,31 @@ export class ProductsController {
 
   @Post()
   @Roles(Role.ADMIN)
-  async create(@Body() body: unknown) {
-    // ✅ Runtime Zod validation
-    const dto = CreateProductDto.parse(body);
+  create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
 
   @Public()
   @Get()
-  async findAll(@Query('page') page = '0', @Query('limit') limit = '10') {
-    const p = parseInt(page as any, 10);
-    const l = parseInt(limit as any, 10);
-    return this.productsService.findAll(p, l);
+  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    return this.productsService.findAll(Number(page), Number(limit));
   }
 
   @Public()
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Roles(Role.ADMIN)
-  async update(@Param('id') id: string, @Body() body: unknown) {
-    const dto = UpdateProductDto.parse(body); // ✅ Zod validation
+  update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN)
-  async remove(@Param('id') id: string) {
+  remove(@Param('id') id: string) {
     return this.productsService.remove(id);
   }
 }

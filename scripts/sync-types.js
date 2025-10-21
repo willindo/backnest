@@ -18,6 +18,8 @@ if (!fs.existsSync(frontendDir)) {
 const frontendZodDir = path.join(frontendDir, "src/generated/zod");
 
 // Helper: copy recursively
+fs.rmSync(frontendZodDir, { recursive: true, force: true });
+
 function copyDir(srcDir, destDir) {
   fs.mkdirSync(destDir, { recursive: true });
   for (const item of fs.readdirSync(srcDir, { withFileTypes: true })) {

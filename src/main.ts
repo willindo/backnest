@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded, raw } from 'express';
 import cookieParser from 'cookie-parser';
+import { Request, Response, NextFunction } from 'express'; // ✅ optional for types
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,7 +21,11 @@ async function bootstrap() {
     ],
     credentials: true,
   });
-
+  // app.use((req: Request, res: Response, next: NextFunction) => {
+  //   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  //   res.removeHeader('ETag');
+  //   next();
+  // });
   app.use('/payments/webhook', raw({ type: '*/*' }));
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important
 }
