@@ -4,8 +4,18 @@ import {
   IsOptional,
   IsArray,
   IsEnum,
+  ValidateNested,
 } from 'class-validator';
-import { Gender } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { Gender, Size } from '@prisma/client';
+
+class ProductSizeInput {
+  @IsEnum(Size)
+  size!: Size;
+
+  @IsNumber()
+  quantity!: number;
+}
 
 export class CreateProductDto {
   @IsString()
@@ -34,4 +44,9 @@ export class CreateProductDto {
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ProductSizeInput)
+  sizes?: ProductSizeInput[];
 }

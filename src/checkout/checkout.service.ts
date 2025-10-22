@@ -1,178 +1,99 @@
-import {
-  Injectable,
-  BadRequestException,
-  InternalServerErrorException,
-} from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import type { CheckoutBody } from './dto/checkout.dto';
-import { InvalidCartItem } from './dto/verify-cart.dto';
-import { VerifiedCartResponse } from '../cart/types/verify-cart.types';
-import { Prisma } from '@prisma/client';
+// src/checkout/checkout.service.ts
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { PrismaService } from 'prisma/prisma.service';
+
 @Injectable()
 export class CheckoutService {
   constructor(private prisma: PrismaService) {}
 
-  async checkout(userId: string, payload: CheckoutBody) {
-    try {
-      return await this.prisma.$transaction(
-        async (tx: Prisma.TransactionClient) => {
-          const cart = await tx.cart.findUnique({
-            where: { userId },
-            include: {
-              items: { include: { product: true } },
-            },
-          });
-
-          if (!cart || cart.items.length === 0) {
-            throw new BadRequestException('Cart is empty');
-          }
-
-          let total = 0;
-          const orderItemsCreate = [];
-
-          // Decrement stock safely
-          for (const item of cart.items) {
-            const price = Number(item.product?.price ?? item.productPrice ?? 0);
-            total += price * item.quantity;
-
-            // Check and decrement inventory
-            if (item.size) {
-              // Variant exists → decrement ProductSize.quantity
-              const sizeRecord = await tx.productSize.findFirst({
-                where: { productId: item.productId, size: item.size },
-              });
-
-              if (!sizeRecord) {
-                throw new BadRequestException(
-                  `Product size not found for ${item.product?.name}`,
-                );
-              }
-
-              if (sizeRecord.quantity < item.quantity) {
-                throw new BadRequestException(
-                  `Insufficient stock for ${item.product?.name} (${item.size})`,
-                );
-              }
-
-              await tx.productSize.update({
-                where: { id: sizeRecord.id },
-                data: { quantity: { decrement: item.quantity } },
-              });
-            } else {
-              // No size → decrement Product.stock
-              if (item.product.stock < item.quantity) {
-                throw new BadRequestException(
-                  `Insufficient stock for ${item.product?.name}`,
-                );
-              }
-
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { stock: { decrement: item.quantity } },
-              });
-            }
-
-            orderItemsCreate.push({
-              productId: item.productId,
-              quantity: item.quantity,
-              priceAtPurchase: price,
-            });
-          }
-
-          // Create Order
-          const order = await tx.order.create({
-            data: {
-              userId,
-              total,
-              status: 'PENDING',
-              items: { create: orderItemsCreate },
-            },
-            include: { items: true },
-          });
-
-          // Clear cart
-          await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-
-          return order;
-        },
-      );
-    } catch (err) {
-      if (err instanceof BadRequestException) throw err;
-      console.error(err);
-      throw new InternalServerErrorException('Checkout failed');
-    }
-  }
-  async verifyCart(userId: string): Promise<VerifiedCartResponse> {
+  async processCheckout(userId: string) {
     const cart = await this.prisma.cart.findUnique({
       where: { userId },
       include: {
-        items: { include: { product: true } },
+        items: {
+          include: { product: { include: { sizes: true } } },
+        },
       },
     });
 
-    if (!cart) throw new BadRequestException('Cart not found');
-
-    const invalidItems: { id: string; reason: string }[] = [];
-    const verifiedItems = [];
-    let subtotal = 0;
-    let totalQuantity = 0;
-
-    for (const item of cart.items) {
-      const product = item.product;
-
-      if (!product) {
-        invalidItems.push({ id: item.id, reason: 'Product not found' });
-        continue;
-      }
-
-      const price = Number(product.price ?? item.productPrice ?? 0);
-      subtotal += price * item.quantity;
-      totalQuantity += item.quantity;
-
-      if (item.size) {
-        const sizeRecord = await this.prisma.productSize.findFirst({
-          where: { productId: item.productId, size: item.size },
-          select: { quantity: true },
-        });
-
-        if (!sizeRecord) {
-          invalidItems.push({
-            id: item.id,
-            reason: `Variant (${item.size}) not found`,
-          });
-        } else if (sizeRecord.quantity < item.quantity) {
-          invalidItems.push({
-            id: item.id,
-            reason: `Only ${sizeRecord.quantity} left for size ${item.size}`,
-          });
-        }
-      } else if (product.stock < item.quantity) {
-        invalidItems.push({
-          id: item.id,
-          reason: `Only ${product.stock} left in stock`,
-        });
-      }
-
-      verifiedItems.push({
-        id: item.id,
-        productId: item.productId,
-        productName: product.name,
-        productImage: product.images?.[0] ?? null,
-        price,
-        quantity: item.quantity,
-        subtotal: price * item.quantity,
-      });
+    if (!cart || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty');
     }
 
-    return {
-      cartId: cart.id,
-      userId: cart.userId,
-      items: verifiedItems,
-      subtotal,
-      totalQuantity,
-      invalidItems,
-      isValid: invalidItems.length === 0,
-      verifiedAt: new Date(),
-    };
+    // Validate stock availability
+    for (const item of cart.items) {
+      const sizeRecord = item.product.sizes.find((s) => s.size === item.size);
+      if (!sizeRecord) {
+        throw new BadRequestException(
+          `Size ${item.size} not found for ${item.productName}`,
+        );
+      }
+      if (sizeRecord.quantity < item.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock for ${item.productName} (${item.size})`,
+        );
+      }
+    }
+
+    // Atomic transaction: lock stock, create order & payment
+    return await this.prisma.$transaction(async (tx) => {
+      // Deduct stock
+      for (const item of cart.items) {
+        await tx.productSize.updateMany({
+          where: {
+            productId: item.productId,
+            size: item.size!, // ✅ type-safe
+            quantity: { gte: item.quantity },
+          },
+          data: { quantity: { decrement: item.quantity } },
+        });
+      }
+
+      // Calculate total
+      const total = cart.items.reduce(
+        (sum, item) => sum + Number(item.productPrice) * item.quantity,
+        0,
+      );
+
+      // Create order with size included in OrderItem
+      const order = await tx.order.create({
+        data: {
+          userId,
+          total,
+          status: 'PENDING',
+          paymentStatus: 'PENDING',
+          items: {
+            create: cart.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              priceAtPurchase: item.productPrice,
+              size: item.size, // ✅ store size for each OrderItem
+            })),
+          },
+        },
+      });
+
+      // Create payment placeholder
+      const payment = await tx.payment.create({
+        data: {
+          userId,
+          orderId: order.id,
+          amount: total,
+          currency: 'INR',
+          status: 'PENDING',
+        },
+      });
+
+      // Empty cart after order creation
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+      return {
+        message: 'Checkout initialized',
+        orderId: order.id,
+        paymentId: payment.id,
+        amount: total,
+        currency: 'INR',
+      };
+    });
   }
 }
