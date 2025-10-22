@@ -3,7 +3,7 @@ import { AddToCartDto, UpdateCartItemDto } from './dto';
 export declare class CartController {
     private readonly cartService;
     constructor(cartService: CartService);
-    findCart(req: any): Promise<{
+    findCart(userId: string): Promise<{
         id: string;
         userId: string;
         items: {
@@ -20,7 +20,24 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    add(req: any, dto: AddToCartDto): Promise<{
+    add(userId: string, dto: AddToCartDto): Promise<{
+        id: string;
+        userId: string;
+        items: {
+            id: string;
+            productId: string;
+            quantity: number;
+            product: {
+                name: string;
+                price: number;
+                description?: string | null | undefined;
+                image?: string | null | undefined;
+            };
+        }[];
+        createdAt: string;
+        updatedAt: string;
+    } | null>;
+    update(userId: string, dto: UpdateCartItemDto): Promise<{
         id: string;
         userId: string;
         items: {
@@ -37,7 +54,7 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    update(req: any, dto: UpdateCartItemDto): Promise<{
+    remove(userId: string, itemId: string): Promise<{
         id: string;
         userId: string;
         items: {
@@ -54,39 +71,8 @@ export declare class CartController {
         createdAt: string;
         updatedAt: string;
     }>;
-    remove(req: any, itemId: string): Promise<{
-        id: string;
-        userId: string;
-        items: {
-            id: string;
-            productId: string;
-            quantity: number;
-            product: {
-                name: string;
-                price: number;
-                description?: string | null | undefined;
-                image?: string | null | undefined;
-            };
-        }[];
-        createdAt: string;
-        updatedAt: string;
+    clear(userId: string): Promise<{
+        message: string;
     }>;
-    clear(req: any): Promise<{
-        id: string;
-        userId: string;
-        items: {
-            id: string;
-            productId: string;
-            quantity: number;
-            product: {
-                name: string;
-                price: number;
-                description?: string | null | undefined;
-                image?: string | null | undefined;
-            };
-        }[];
-        createdAt: string;
-        updatedAt: string;
-    }>;
-    verify(req: any): Promise<import("./types/verify-cart.types").VerifiedCartResponse>;
+    verify(userId: string): Promise<import("./types/verify-cart.types").VerifiedCartResponse>;
 }

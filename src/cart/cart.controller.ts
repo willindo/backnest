@@ -1,3 +1,4 @@
+// File: src/cart/cart.controller.ts
 import {
   Controller,
   Get,
@@ -6,55 +7,43 @@ import {
   Delete,
   Body,
   Param,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddToCartDto, UpdateCartItemDto } from './dto';
-
+import { GetUser } from '../common/decorators/get-user.decorator';
+// Note: The app module is already registering JwtAuthGuard and RolesGuard as global guards.
 @Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
-  /** Get current user's cart */
   @Get()
-  async findCart(@Req() req: any) {
-    const userId = req.user.id;
+  async findCart(@GetUser('id') userId: string) {
     return this.cartService.findCartByUser(userId);
   }
 
-  /** Add item to cart */
   @Post('add')
-  async add(@Req() req: any, @Body() dto: AddToCartDto) {
-    const userId = req.user.id;
-    return this.cartService.add(userId, dto);
+  async add(@GetUser('id') userId: string, @Body() dto: AddToCartDto) {
+    return this.cartService.add(userId, dto as any);
   }
 
-  /** Update cart item */
   @Put('update')
-  async update(@Req() req: any, @Body() dto: UpdateCartItemDto) {
-    const userId = req.user.id;
+  async update(@GetUser('id') userId: string, @Body() dto: UpdateCartItemDto) {
     return this.cartService.update(userId, dto);
   }
 
-  /** Remove cart item */
   @Delete('item/:itemId')
-  async remove(@Req() req: any, @Param('itemId') itemId: string) {
-    const userId = req.user.id;
+  async remove(@GetUser('id') userId: string, @Param('itemId') itemId: string) {
     return this.cartService.remove(userId, itemId);
   }
 
-  /** Clear entire cart */
   @Delete('clear')
-  async clear(@Req() req: any) {
-    const userId = req.user.id;
+  async clear(@GetUser('id') userId: string) {
     return this.cartService.clear(userId);
   }
 
-  /** Verify cart (stock & removed products) */
   @Get('verify')
-  async verify(@Req() req: any) {
-    const userId = req.user.id;
+  async verify(@GetUser('id') userId: string) {
     return this.cartService.verifyCart(userId);
   }
 }

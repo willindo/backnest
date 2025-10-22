@@ -1,107 +1,102 @@
-// src/cart/cart.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+// File: src/cart/cart.service.ts
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AddToCartDto, UpdateCartItemDto, CartDto } from './dto';
-import { Prisma } from '@prisma/client';
+import { AddToCartDto, UpdateCartItemDto } from './dto';
 import { VerifiedCartResponse, VerifiedItem } from './types/verify-cart.types';
 import { Size } from '@prisma/client';
+import { mapCart } from './utils/cart-mapper';
 
 @Injectable()
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  private mapCart(
-    cart: Prisma.CartGetPayload<{
-      include: { items: { include: { product: true } } };
-    }>,
-  ): CartDto {
-    return {
-      id: cart.id,
-      userId: cart.userId,
-      createdAt: cart.createdAt.toISOString(),
-      updatedAt: cart.updatedAt.toISOString(),
-      items: cart.items.map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        product: {
-          name: item.productName ?? item.product?.name ?? 'Unknown Product',
-          price: Number(item.productPrice ?? item.product?.price ?? 0),
-          description:
-            item.productDescription ?? item.product?.description ?? null,
-          image: item.productImage ?? item.product?.images?.[0] ?? null,
-        },
-      })),
-    };
+  // ================================
+  // 🔹 Utility: Get or Create Cart
+  // ================================
+  private async getOrCreateCartTx(tx: any, userId: string) {
+    let cart = await tx.cart.findFirst({ where: { userId } });
+    if (!cart) cart = await tx.cart.create({ data: { userId } });
+    return cart;
   }
 
-  async findCartByUser(userId: string): Promise<CartDto> {
-    // No need for explicit user check
-    let cart = await this.prisma.cart.findFirst({
+  // ================================
+  // 🔹 Find Cart for Logged-in User
+  // ================================
+  async findCartByUser(userId: string) {
+    const cart = await this.prisma.cart.findFirst({
       where: { userId },
       include: { items: { include: { product: true } } },
     });
-
-    if (!cart) {
-      cart = await this.prisma.cart.create({
-        data: { userId },
-        include: { items: { include: { product: true } } },
-      });
-    }
-
-    return this.mapCart(cart);
+    const dto = mapCart(cart);
+    if (!dto) throw new NotFoundException('Cart not found');
+    return dto;
   }
 
-  async add(
-    userId: string,
-    dto: AddToCartDto & { size?: string | null },
-  ): Promise<CartDto> {
-    let cart = await this.prisma.cart.findFirst({ where: { userId } });
-    if (!cart) cart = await this.prisma.cart.create({ data: { userId } });
+  // ================================
+  // 🔹 Add Product to Cart (Fixed)
+  // ================================
+  async add(userId: string, dto: AddToCartDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const cart = await this.getOrCreateCartTx(tx, userId);
 
-    const product = await this.prisma.product.findUnique({
-      where: { id: dto.productId },
-    });
-    if (!product) throw new NotFoundException('Product not found');
+      const product = await tx.product.findUnique({
+        where: { id: dto.productId },
+        include: { sizes: true },
+      });
+      if (!product) throw new NotFoundException('Product not found');
 
-    const sizeValue = dto.size ?? null;
+      const sizeValue = dto.size ?? null;
+      let stock = product.stock;
 
-    if (sizeValue) {
-      await this.prisma.cartItem.upsert({
-        where: {
-          cartId_productId_size: {
-            cartId: cart.id,
-            productId: dto.productId,
-            size: sizeValue,
+      if (sizeValue) {
+        const sizeRecord = await tx.productSize.findUnique({
+          where: {
+            productId_size: {
+              productId: dto.productId,
+              size: sizeValue as Size,
+            },
           },
-        },
-        update: { quantity: { increment: dto.quantity } },
-        create: {
+        });
+        if (!sizeRecord)
+          throw new BadRequestException(`Size ${sizeValue} not found`);
+        stock = sizeRecord.quantity;
+      }
+
+      if (stock < dto.quantity)
+        throw new BadRequestException(`Only ${stock} items left in stock`);
+
+      // 🧩 Determine existing cart item manually
+      const existingItem = await tx.cartItem.findFirst({
+        where: {
           cartId: cart.id,
           productId: dto.productId,
-          size: sizeValue,
-          quantity: dto.quantity,
-          productName: product.name,
-          productPrice: product.price,
-          productDescription: product.description,
-          productImage: product.images[0] ?? null,
+          size: sizeValue, // can be null
         },
       });
-    } else {
-      const existing = await this.prisma.cartItem.findFirst({
-        where: { cartId: cart.id, productId: dto.productId, size: null },
-      });
-      if (existing) {
-        await this.prisma.cartItem.update({
-          where: { id: existing.id },
-          data: { quantity: { increment: dto.quantity } },
+
+      if (existingItem) {
+        // ✅ Update quantity if already exists
+        await tx.cartItem.update({
+          where: { id: existingItem.id },
+          data: {
+            quantity: { increment: dto.quantity },
+            productName: product.name,
+            productPrice: product.price,
+            productDescription: product.description,
+            productImage: product.images[0] ?? null,
+          },
         });
       } else {
-        await this.prisma.cartItem.create({
+        // ✅ Otherwise create a new item
+        await tx.cartItem.create({
           data: {
             cartId: cart.id,
             productId: dto.productId,
-            size: null,
+            size: sizeValue,
             quantity: dto.quantity,
             productName: product.name,
             productPrice: product.price,
@@ -110,90 +105,153 @@ export class CartService {
           },
         });
       }
+
+      const updated = await tx.cart.findUnique({
+        where: { id: cart.id },
+        include: { items: { include: { product: true } } },
+      });
+
+      return mapCart(updated);
+    });
+  }
+
+  // ================================
+  // 🔹 Update Cart Item Quantity
+  // ================================
+  async update(userId: string, dto: UpdateCartItemDto) {
+    const cart = await this.prisma.cart.findFirst({
+      where: { userId },
+      include: { items: true },
+    });
+    if (!cart) throw new NotFoundException('Cart not found');
+
+    const item = cart.items.find((i) => i.id === dto.itemId);
+    if (!item) throw new NotFoundException('Item not found in cart');
+
+    const product = await this.prisma.product.findUnique({
+      where: { id: item.productId },
+      include: { sizes: true },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+
+    let stock = product.stock;
+    if (item.size) {
+      const sizeRecord = await this.prisma.productSize.findUnique({
+        where: {
+          productId_size: { productId: item.productId, size: item.size },
+        },
+      });
+      if (!sizeRecord)
+        throw new BadRequestException(`Size ${item.size} not found`);
+      stock = sizeRecord.quantity;
     }
 
-    return this.findCartByUser(userId);
-  }
-
-  async update(userId: string, dto: UpdateCartItemDto): Promise<CartDto> {
-    const cart = await this.prisma.cart.findFirst({ where: { userId } });
-    if (!cart) throw new NotFoundException('Cart not found');
-
-    const item = await this.prisma.cartItem.findUnique({
-      where: { id: dto.itemId },
-    });
-    if (!item || item.cartId !== cart.id)
-      throw new NotFoundException('Cart item not found');
+    if (dto.quantity > stock)
+      throw new BadRequestException(`Only ${stock} left in stock`);
 
     await this.prisma.cartItem.update({
-      where: { id: dto.itemId },
+      where: { id: item.id },
       data: { quantity: dto.quantity },
     });
+
     return this.findCartByUser(userId);
   }
 
-  async remove(userId: string, itemId: string): Promise<CartDto> {
-    const cart = await this.prisma.cart.findFirst({ where: { userId } });
+  // ================================
+  // 🔹 Remove a Cart Item
+  // ================================
+  async remove(userId: string, itemId: string) {
+    const cart = await this.prisma.cart.findFirst({
+      where: { userId },
+      include: { items: true },
+    });
     if (!cart) throw new NotFoundException('Cart not found');
 
-    const item = await this.prisma.cartItem.findUnique({
-      where: { id: itemId },
-    });
-    if (!item || item.cartId !== cart.id)
-      throw new NotFoundException('Cart item not found');
+    const item = cart.items.find((i) => i.id === itemId);
+    if (!item) throw new NotFoundException('Item not found in cart');
 
-    await this.prisma.cartItem.delete({ where: { id: itemId } });
+    await this.prisma.cartItem.delete({ where: { id: item.id } });
     return this.findCartByUser(userId);
   }
 
-  async clear(userId: string): Promise<CartDto> {
+  // ================================
+  // 🔹 Clear Entire Cart
+  // ================================
+  async clear(userId: string) {
     const cart = await this.prisma.cart.findFirst({ where: { userId } });
     if (!cart) throw new NotFoundException('Cart not found');
 
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-    return this.findCartByUser(userId);
+    return { message: 'Cart cleared successfully' };
   }
 
+  // ================================
+  // 🔹 Verify Cart Validity
+  // ================================
   async verifyCart(userId: string): Promise<VerifiedCartResponse> {
     const cart = await this.prisma.cart.findFirst({
       where: { userId },
-      include: { items: { include: { product: true } } },
+      include: {
+        items: { include: { product: { include: { sizes: true } } } },
+      },
     });
     if (!cart) throw new NotFoundException('Cart not found');
 
+    const verifiedItems: VerifiedItem[] = [];
     const invalidItems: { id: string; reason: string }[] = [];
+    let subtotal = 0;
+    let totalQuantity = 0;
 
-    const items: VerifiedItem[] = cart.items.map((item) => {
-      const priceNum = Number(item.productPrice ?? item.product?.price ?? 0);
-      const subtotal = priceNum * item.quantity;
+    for (const item of cart.items) {
+      const product = item.product;
+      if (!product) {
+        invalidItems.push({ id: item.id, reason: 'Product not found' });
+        continue;
+      }
+
+      let price = Number(product.price);
+      let availableStock = product.stock;
       let reason: string | undefined;
 
-      if (!item.product) reason = 'Product removed';
-      else if (item.quantity > item.product.stock)
-        reason = `Only ${item.product.stock} left in stock`;
+      if (item.size) {
+        const sizeRecord = product.sizes.find((s) => s.size === item.size);
+        if (!sizeRecord) {
+          reason = `Size ${item.size} unavailable`;
+        } else if (sizeRecord.quantity < item.quantity) {
+          reason = `Only ${sizeRecord.quantity} left in stock`;
+        }
+        availableStock = sizeRecord?.quantity ?? 0;
+      } else if (product.stock < item.quantity) {
+        reason = `Only ${product.stock} left in stock`;
+        availableStock = product.stock;
+      }
 
-      if (reason) invalidItems.push({ id: item.id, reason });
+      const isValid = !reason;
+      const subtotalItem = Number(price) * item.quantity;
 
-      return {
+      verifiedItems.push({
         id: item.id,
         productId: item.productId,
-        productName:
-          item.productName ?? item.product?.name ?? 'Unknown Product',
-        productImage: item.productImage ?? item.product?.images?.[0] ?? null,
-        price: priceNum,
+        productName: item.productName ?? product.name,
+        productImage: item.productImage ?? product.images[0] ?? null,
+        price: price,
         quantity: item.quantity,
-        subtotal,
+        subtotal: subtotalItem,
         reason,
-      };
-    });
+      });
 
-    const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
-    const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
+      if (isValid) {
+        subtotal += subtotalItem;
+        totalQuantity += item.quantity;
+      } else {
+        invalidItems.push({ id: item.id, reason: reason! });
+      }
+    }
 
     return {
       cartId: cart.id,
-      userId: cart.userId,
-      items,
+      userId,
+      items: verifiedItems,
       subtotal,
       totalQuantity,
       invalidItems,

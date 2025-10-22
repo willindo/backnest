@@ -16,79 +16,74 @@ exports.CartController = void 0;
 const common_1 = require("@nestjs/common");
 const cart_service_1 = require("./cart.service");
 const dto_1 = require("./dto");
+const get_user_decorator_1 = require("../common/decorators/get-user.decorator");
 let CartController = class CartController {
     constructor(cartService) {
         this.cartService = cartService;
     }
-    async findCart(req) {
-        const userId = req.user.id;
+    async findCart(userId) {
         return this.cartService.findCartByUser(userId);
     }
-    async add(req, dto) {
-        const userId = req.user.id;
+    async add(userId, dto) {
         return this.cartService.add(userId, dto);
     }
-    async update(req, dto) {
-        const userId = req.user.id;
+    async update(userId, dto) {
         return this.cartService.update(userId, dto);
     }
-    async remove(req, itemId) {
-        const userId = req.user.id;
+    async remove(userId, itemId) {
         return this.cartService.remove(userId, itemId);
     }
-    async clear(req) {
-        const userId = req.user.id;
+    async clear(userId) {
         return this.cartService.clear(userId);
     }
-    async verify(req) {
-        const userId = req.user.id;
+    async verify(userId) {
         return this.cartService.verifyCart(userId);
     }
 };
 exports.CartController = CartController;
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, common_1.Req)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "findCart", null);
 __decorate([
     (0, common_1.Post)('add'),
-    __param(0, (0, common_1.Req)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "add", null);
 __decorate([
     (0, common_1.Put)('update'),
-    __param(0, (0, common_1.Req)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)('item/:itemId'),
-    __param(0, (0, common_1.Req)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('id')),
     __param(1, (0, common_1.Param)('itemId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "remove", null);
 __decorate([
     (0, common_1.Delete)('clear'),
-    __param(0, (0, common_1.Req)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "clear", null);
 __decorate([
     (0, common_1.Get)('verify'),
-    __param(0, (0, common_1.Req)()),
+    __param(0, (0, get_user_decorator_1.GetUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], CartController.prototype, "verify", null);
 exports.CartController = CartController = __decorate([
