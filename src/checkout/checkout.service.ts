@@ -66,7 +66,7 @@ export class CheckoutService {
             create: cart.items.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
-              priceAtPurchase: item.productPrice,
+              priceAtPurchase: item.productPrice!,
               size: item.size, // ✅ store size for each OrderItem
             })),
           },

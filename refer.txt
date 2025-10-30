@@ -91,3 +91,35 @@ import { ProductSchema } from '@/generated/zod/ProductSchema';
 function validateProduct(data: unknown) {
   return CreateProductSchema.parse(data);
 }
+
+
+
+
+/home/badsha/dev/mono-commerce/scripts/sync-types.js
+  7,5: if (process.env.RENDER || process.env.NODE_ENV === "production") {
+  7,27: if (process.env.RENDER || process.env.NODE_ENV === "production") {
+
+/home/badsha/dev/mono-commerce/src/auth/auth.service.ts
+  54,20:     const isProd = process.env.NODE_ENV === 'production';
+  56,15:       secret: process.env.JWT_SECRET || 'supersecret',
+  57,21:       // expiresIn: process.env.JWT_EXPIRES_IN || (isProd ? "1d" : "7d"),
+  58,21:       // expiresIn: process.env.JWT_EXPIRES_IN
+  59,23:       //   ? parseInt(process.env.JWT_EXPIRES_IN)
+  67,15:       secure: process.env.NODE_ENV === 'production',
+  68,17:       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  86,15:       secure: process.env.NODE_ENV === 'production',
+  87,17:       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+
+/home/badsha/dev/mono-commerce/src/auth/jwt.strategy.ts
+  16,20:       secretOrKey: process.env.JWT_SECRET || 'supersecret',
+
+/home/badsha/dev/mono-commerce/src/app.module.ts
+  22,29:       envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
+
+/home/badsha/dev/mono-commerce/src/main.ts
+  10,18:   const isProd = process.env.NODE_ENV === 'production';
+  17,7:       process.env.FRONTEND_URL,
+  31,20:   await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important
+  33,29:     `🚀 Server running in ${process.env.NODE_ENV} mode on port ${process.env.PORT ?? 3001}`,
+  33,66:     `🚀 Server running in ${process.env.NODE_ENV} mode on port ${process.env.PORT ?? 3001}`,
+

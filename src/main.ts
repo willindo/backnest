@@ -7,6 +7,7 @@ import { Request, Response, NextFunction } from 'express'; // ✅ optional for t
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const isProd = process.env.NODE_ENV === 'production';
   app.use(cookieParser());
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ extended: true }));
@@ -21,12 +22,10 @@ async function bootstrap() {
     ],
     credentials: true,
   });
-  // app.use((req: Request, res: Response, next: NextFunction) => {
-  //   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  //   res.removeHeader('ETag');
-  //   next();
-  // });
   app.use('/payments/webhook', raw({ type: '*/*' }));
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0'); // 👈 important
+  console.log(
+    `🚀 Server running in ${process.env.NODE_ENV} mode on port ${process.env.PORT ?? 3001}`,
+  );
 }
 bootstrap();

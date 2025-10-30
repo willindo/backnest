@@ -90,8 +90,9 @@ let AuthService = class AuthService {
     }
     async login(user, res) {
         const payload = { sub: user.id, email: user.email };
+        const isProd = process.env.NODE_ENV === 'production';
         const signOptions = {
-            secret: process.env.JWT_SECRET,
+            secret: process.env.JWT_SECRET || 'supersecret',
         };
         const token = this.jwt.sign(payload, signOptions);
         const cookieOptions = {
@@ -105,6 +106,7 @@ let AuthService = class AuthService {
         const { password } = user, safeUser = __rest(user, ["password"]);
         return {
             message: 'Login successful',
+            token,
             user: safeUser,
         };
     }

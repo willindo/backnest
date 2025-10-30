@@ -17,7 +17,10 @@ import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
+    }),
     JwtModule,
     PrismaModule,
     AuthModule,

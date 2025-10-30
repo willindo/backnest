@@ -29,7 +29,10 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
+            }),
             jwt_1.JwtModule,
             prisma_module_1.PrismaModule,
             auth_module_1.AuthModule,

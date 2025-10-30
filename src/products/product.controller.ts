@@ -1,3 +1,4 @@
+// src/products/product.controller.ts
 import {
   Controller,
   Get,
@@ -5,11 +6,13 @@ import {
   Body,
   Param,
   Delete,
+  DefaultValuePipe,
   Patch,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
-import { ProductsService } from './product.service';
+import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
@@ -23,30 +26,38 @@ import { Role } from '@prisma/client';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  // 🟢 Create product (Admin only)
   @Post()
   @Roles(Role.ADMIN)
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
 
+  // 🟢 Public paginated fetch
   @Public()
   @Get()
-  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
-    return this.productsService.findAll(Number(page), Number(limit));
+  findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.productsService.findAll(page, limit);
   }
 
+  // 🟢 Public single fetch
   @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
 
+  // 🟠 Admin update
   @Patch(':id')
   @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }
 
+  // 🔴 Admin delete
   @Delete(':id')
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {

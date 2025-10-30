@@ -56,7 +56,6 @@ let OrdersService = class OrdersService {
         const currency = (_c = payload.currency) !== null && _c !== void 0 ? _c : 'INR';
         try {
             const createdOrder = await this.prisma.$transaction(async (tx) => {
-                var _a;
                 for (const it of itemsWithPrice) {
                     if (it.size) {
                         const updated = await tx.productSize.updateMany({
@@ -91,8 +90,6 @@ let OrdersService = class OrdersService {
                         paymentStatus: paymentMethod === 'COD'
                             ? client_1.PaymentStatus.PAID
                             : client_1.PaymentStatus.PENDING,
-                        address: payload.address ? payload.address : null,
-                        notes: (_a = payload.notes) !== null && _a !== void 0 ? _a : null,
                         items: {
                             create: itemsWithPrice.map((it) => ({
                                 productId: it.productId,

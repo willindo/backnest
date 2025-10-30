@@ -51,9 +51,10 @@ export class AuthService {
   // 🔹 Login — issue JWT and set secure cookie
   async login(user: any, res: Res) {
     const payload = { sub: user.id, email: user.email };
-
+    const isProd = process.env.NODE_ENV === 'production';
     const signOptions: JwtSignOptions = {
-      secret: process.env.JWT_SECRET!,
+      secret: process.env.JWT_SECRET || 'supersecret',
+      // expiresIn: process.env.JWT_EXPIRES_IN || (isProd ? "1d" : "7d"),
       // expiresIn: process.env.JWT_EXPIRES_IN
       //   ? parseInt(process.env.JWT_EXPIRES_IN)
       //   : 7 * 24 * 60 * 60,
@@ -74,6 +75,7 @@ export class AuthService {
     const { password, ...safeUser } = user;
     return {
       message: 'Login successful',
+      token,
       user: safeUser,
     };
   }

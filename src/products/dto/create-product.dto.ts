@@ -1,21 +1,15 @@
 import {
   IsString,
   IsNumber,
-  IsOptional,
   IsArray,
-  IsEnum,
+  IsOptional,
+  Min,
   ValidateNested,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Gender, Size } from '@prisma/client';
-
-class ProductSizeInput {
-  @IsEnum(Size)
-  size!: Size;
-
-  @IsNumber()
-  quantity!: number;
-}
+import { Gender } from '@prisma/client'; // ✅ allowed import
+import { CreateProductSizeDto } from './create-product-size.dto'; // ✅ local import
 
 export class CreateProductDto {
   @IsString()
@@ -26,27 +20,30 @@ export class CreateProductDto {
   description?: string;
 
   @IsNumber()
+  @Min(0)
+  @Type(() => Number)
   price!: number;
 
-  @IsOptional()
   @IsNumber()
-  stock?: number;
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  images?: string[];
-
-  @IsOptional()
-  @IsString()
-  categoryId?: string;
+  @Min(0)
+  @Type(() => Number)
+  stock!: number;
 
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
 
   @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ProductSizeInput)
-  sizes?: ProductSizeInput[];
+  @Type(() => CreateProductSizeDto)
+  sizes?: CreateProductSizeDto[];
+
+  @IsOptional()
+  @IsArray()
+  images?: string[];
+
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
 }

@@ -5,16 +5,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { Prisma, Product, Size } from '@prisma/client';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import {
+  CreateProductInput,
+  UpdateProductInput,
+} from './schemas/product.schema';
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // -----------------------------
   // 🧩 Helper for ProductSize upserts
-  // -----------------------------
   private buildSizeUpserts(
     productId: string,
     sizes: { size: Size; quantity: number }[],
@@ -26,85 +26,65 @@ export class ProductsService {
     }));
   }
 
-  // -----------------------------
   // 🏗️ Create Product
-  // -----------------------------
-  async create(dto: CreateProductDto): Promise<Product> {
+  async create(dto: CreateProductInput): Promise<Product> {
+    const { sizes, ...rest } = dto;
+
     if (dto.price < 0)
       throw new BadRequestException('Price cannot be negative');
     if (dto.stock && dto.stock < 0)
       throw new BadRequestException('Stock cannot be negative');
 
-    return await this.prisma.product.create({
+    return this.prisma.product.create({
       data: {
-        name: dto.name,
-        description: dto.description,
+        ...rest,
         price: new Prisma.Decimal(dto.price),
         stock: dto.stock ?? 0,
         images: dto.images ?? [],
-        categoryId: dto.categoryId,
-        gender: dto.gender,
-        sizes: dto.sizes?.length
+        gender: dto.gender ?? null,
+        sizes: sizes?.length
           ? {
-              create: dto.sizes.map((s) => ({
+              create: sizes.map((s) => ({
                 size: s.size,
-                quantity: s.quantity,
+                quantity: s.quantity ?? 0,
               })),
             }
-          : {
-              // Default sizes if none provided (for apparel)
-              create: [
-                { size: 'XS', quantity: 0 },
-                { size: 'S', quantity: 0 },
-                { size: 'M', quantity: 0 },
-                { size: 'L', quantity: 0 },
-                { size: 'XL', quantity: 0 },
-                { size: 'XXL', quantity: 0 },
-              ],
-            },
+          : undefined,
       },
       include: { sizes: true },
     });
   }
 
-  // -----------------------------
   // 📦 Get All Products (Paginated)
-  // -----------------------------
   async findAll(page = 1, limit = 10) {
     const total = await this.prisma.product.count();
     const totalPages = Math.ceil(total / limit);
 
-    const products = await this.prisma.product.findMany({
+    const data = await this.prisma.product.findMany({
       skip: (page - 1) * limit,
       take: limit,
       include: { sizes: true },
       orderBy: { createdAt: 'desc' },
     });
 
-    return { total, page, limit, totalPages, data: products };
+    return { total, page, limit, totalPages, data };
   }
 
-  // -----------------------------
   // 🔍 Get One Product
-  // -----------------------------
   async findOne(id: string): Promise<Product> {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: { sizes: true },
     });
-
     if (!product)
       throw new NotFoundException(`Product with ID "${id}" not found`);
     return product;
   }
 
-  // -----------------------------
   // ✏️ Update Product
-  // -----------------------------
-  async update(id: string, dto: UpdateProductDto): Promise<Product> {
+  async update(id: string, dto: UpdateProductInput): Promise<Product> {
     const { sizes, ...rest } = dto;
 
-    // Prevent invalid stock/price
     if (rest.price && rest.price < 0)
       throw new BadRequestException('Price cannot be negative');
     if (rest.stock && rest.stock < 0)
@@ -117,39 +97,34 @@ export class ProductsService {
         where: { id },
         data: {
           ...rest,
+          gender: rest.gender ?? null,
           sizes: sizes?.length
             ? { upsert: this.buildSizeUpserts(id, sizes) }
             : undefined,
         },
         include: { sizes: true },
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.code === 'P2025')
+        throw new NotFoundException(`Product with ID "${id}" not found`);
       console.error(err);
-      throw new NotFoundException(
-        `Cannot update. Product with ID "${id}" not found`,
-      );
+      throw err;
     }
   }
 
-  // -----------------------------
   // 🗑️ Delete Product
-  // -----------------------------
   async remove(id: string): Promise<Product> {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: { sizes: true },
     });
-
     if (!product)
       throw new NotFoundException(
         `Cannot delete. Product with ID "${id}" not found`,
       );
 
-    // 🧹 delete sizes first to prevent foreign key error
     await this.prisma.productSize.deleteMany({ where: { productId: id } });
-
-    // then delete product
-    return await this.prisma.product.delete({
+    return this.prisma.product.delete({
       where: { id },
       include: { sizes: true },
     });

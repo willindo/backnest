@@ -114,8 +114,8 @@ export class OrdersService {
               paymentMethod === 'COD'
                 ? PaymentStatus.PAID
                 : PaymentStatus.PENDING,
-            address: payload.address ? (payload.address as any) : null,
-            notes: payload.notes ?? null,
+            // address: payload.address ? (payload.address as any) : null,
+            // notes: payload.notes ?? null,
             items: {
               create: itemsWithPrice.map((it) => ({
                 productId: it.productId,

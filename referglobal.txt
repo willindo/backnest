@@ -101,3 +101,36 @@ Contract
 Add example request/response in docs (postman/Swagger/openapi).
 
 Make sure error shapes are consistent: { message: string; details?: any }.
+curl -X POST http://localhost:3001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@mail.com","password":"1234567"}'
+
+curl -X POST http://localhost:3001/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWhhbzY4cWQwMDAwY2xtazZkM3Nkc2Z3IiwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzYxODAzNzg2LCJleHAiOjE3NjI0MDg1ODZ9._at7y5sekWC6K6g3tvU_eIImjhQmOUNqNDqYLzU0lqI","user" \
+  -d '{
+    "name": "Jeans Shirt",
+    "description": "Lightweight summer shirt",
+    "price": 499,
+    "stock": 50,
+    "images": ["https://example.com/img1.jpg", "https://example.com/img2.jpg"]
+  }'
+
+curl -X DELETE http://localhost:3001/products/cmhau7sqs0005cl593v7440h2 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWhhbzY4cWQwMDAwY2xtazZkM3Nkc2Z3IiwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzYxNzE5Nzk3LCJleHAiOjE3NjIzMjQ1OTd9.xH0a1VgKeOId72oDjgDYSwKkTHYDugKcS78A_U93Yaw" \
+  -H "Content-Type: application/json"
+
+curl -X PATCH http://localhost:3001/products/cmhcy3q640000cl4a1k5r36ui \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWhhbzY4cWQwMDAwY2xtazZkM3Nkc2Z3IiwiZW1haWwiOiJ0ZXN0QG1haWwuY29tIiwiaWF0IjoxNzYxODAzNzg2LCJleHAiOjE3NjI0MDg1ODZ9._at7y5sekWC6K6g3tvU_eIImjhQmOUNqNDqYLzU0lqI" \
+  -d '{
+    "name": "Saree Schiffon ",
+    "description": "Now available in premium cotton blend",
+    "price": 741,
+    "stock": 25,
+    "gender": "MENS",
+    "sizes": [
+      { "size": "M", "quantity": 5 },
+      { "size": "L", "quantity": 10 }
+    ]
+  }'

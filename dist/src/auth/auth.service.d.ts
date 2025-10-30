@@ -26,6 +26,7 @@ export declare class AuthService {
     }>;
     login(user: any, res: Res): Promise<{
         message: string;
+        token: string;
         user: any;
     }>;
     logout(res: Res): Promise<{

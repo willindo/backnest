@@ -108,7 +108,7 @@ export class PaymentsService {
       await tx.order.update({
         where: { id: internalOrderId },
         data: {
-          paymentId: razorpay_payment_id, // store in Order for quick lookup
+          latestPaymentId: razorpay_payment_id, // ✅ now valid
           paymentStatus: 'PAID',
           status: 'PROCESSING',
         },

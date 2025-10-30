@@ -18,5 +18,5 @@ services:
         value: "true"
 
 databases:
-  - name: setupnest
+  - name: mono_commerce
     plan: free
