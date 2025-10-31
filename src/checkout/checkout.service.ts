@@ -1,5 +1,6 @@
 // src/checkout/checkout.service.ts
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
 
 @Injectable()
@@ -59,7 +60,7 @@ export class CheckoutService {
       const order = await tx.order.create({
         data: {
           userId,
-          total,
+          totalAmount: total,
           status: 'PENDING',
           paymentStatus: 'PENDING',
           items: {

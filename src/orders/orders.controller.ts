@@ -33,7 +33,7 @@ export class OrdersController {
     const order = await this.ordersService.createOrderFromPayload(userId, body);
     return {
       id: order.id,
-      total: Number(order.total),
+      total: Number(order.totalAmount),
       currency: 'INR',
     };
   }

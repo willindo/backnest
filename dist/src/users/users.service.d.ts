@@ -12,6 +12,7 @@ export declare class UsersService {
             name: string | null;
             email: string;
             role: import(".prisma/client").$Enums.Role;
+            phone: string | null;
         }[];
         total: number;
         page: number;
@@ -24,6 +25,7 @@ export declare class UsersService {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     create(dto: CreateUserDto): Promise<{
         id: string;
@@ -32,6 +34,7 @@ export declare class UsersService {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     update(id: string, dto: UpdateUserDto): Promise<{
         id: string;
@@ -40,6 +43,7 @@ export declare class UsersService {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -48,5 +52,6 @@ export declare class UsersService {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
 }

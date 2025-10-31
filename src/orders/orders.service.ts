@@ -104,7 +104,7 @@ export class OrdersService {
         const order = await tx.order.create({
           data: {
             userId,
-            total: total as any,
+            totalAmount: total,
             // ✅ fix enum mismatch
             status:
               paymentMethod === 'COD'

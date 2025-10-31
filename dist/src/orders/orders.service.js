@@ -83,7 +83,7 @@ let OrdersService = class OrdersService {
                 const order = await tx.order.create({
                     data: {
                         userId,
-                        total: total,
+                        totalAmount: total,
                         status: paymentMethod === 'COD'
                             ? client_1.OrderStatus.PROCESSING
                             : client_1.OrderStatus.PENDING,

@@ -14,6 +14,7 @@ export declare class AuthService {
         email: string;
         password: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     register(dto: RegisterDto): Promise<{
         id: string;
@@ -23,6 +24,7 @@ export declare class AuthService {
         email: string;
         password: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     login(user: any, res: Res): Promise<{
         message: string;

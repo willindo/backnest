@@ -14,14 +14,19 @@ export declare class OrdersService {
             orderId: string;
         }[];
     } & {
+        currency: string;
         userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        latestPaymentId: string | null;
+        totalAmount: import("@prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.OrderStatus;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
-        latestPaymentId: string | null;
+        shippingCost: import("@prisma/client/runtime/library").Decimal;
+        taxAmount: import("@prisma/client/runtime/library").Decimal;
+        discountAmount: import("@prisma/client/runtime/library").Decimal;
+        addressId: string | null;
     }>;
     getOrderById(orderId: string): Promise<{
         items: ({
@@ -31,11 +36,12 @@ export declare class OrdersService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
+                slug: string | null;
                 description: string | null;
                 stock: number;
-                images: string[];
                 categoryId: string | null;
                 gender: import(".prisma/client").$Enums.Gender | null;
+                images: string[];
             };
         } & {
             productId: string;
@@ -46,14 +52,19 @@ export declare class OrdersService {
             orderId: string;
         })[];
     } & {
+        currency: string;
         userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        latestPaymentId: string | null;
+        totalAmount: import("@prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.OrderStatus;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
-        latestPaymentId: string | null;
+        shippingCost: import("@prisma/client/runtime/library").Decimal;
+        taxAmount: import("@prisma/client/runtime/library").Decimal;
+        discountAmount: import("@prisma/client/runtime/library").Decimal;
+        addressId: string | null;
     }>;
     listForUser(userId: string): Promise<({
         items: ({
@@ -63,11 +74,12 @@ export declare class OrdersService {
                 createdAt: Date;
                 updatedAt: Date;
                 name: string;
+                slug: string | null;
                 description: string | null;
                 stock: number;
-                images: string[];
                 categoryId: string | null;
                 gender: import(".prisma/client").$Enums.Gender | null;
+                images: string[];
             };
         } & {
             productId: string;
@@ -78,14 +90,19 @@ export declare class OrdersService {
             orderId: string;
         })[];
     } & {
+        currency: string;
         userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        latestPaymentId: string | null;
+        totalAmount: import("@prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.OrderStatus;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
-        latestPaymentId: string | null;
+        shippingCost: import("@prisma/client/runtime/library").Decimal;
+        taxAmount: import("@prisma/client/runtime/library").Decimal;
+        discountAmount: import("@prisma/client/runtime/library").Decimal;
+        addressId: string | null;
     })[]>;
     cancelOrder(orderId: string): Promise<{
         items: {
@@ -97,13 +114,18 @@ export declare class OrdersService {
             orderId: string;
         }[];
     } & {
+        currency: string;
         userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        latestPaymentId: string | null;
+        totalAmount: import("@prisma/client/runtime/library").Decimal;
         status: import(".prisma/client").$Enums.OrderStatus;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
-        latestPaymentId: string | null;
+        shippingCost: import("@prisma/client/runtime/library").Decimal;
+        taxAmount: import("@prisma/client/runtime/library").Decimal;
+        discountAmount: import("@prisma/client/runtime/library").Decimal;
+        addressId: string | null;
     }>;
 }

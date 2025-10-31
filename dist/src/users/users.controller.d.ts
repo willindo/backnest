@@ -12,6 +12,7 @@ export declare class UsersController {
             name: string | null;
             email: string;
             role: import(".prisma/client").$Enums.Role;
+            phone: string | null;
         };
     }>;
     findAll(page?: string, limit?: string, role?: string): Promise<{
@@ -22,6 +23,7 @@ export declare class UsersController {
             name: string | null;
             email: string;
             role: import(".prisma/client").$Enums.Role;
+            phone: string | null;
         }[];
         total: number;
         page: number;
@@ -34,6 +36,7 @@ export declare class UsersController {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     create(dto: CreateUserDto): Promise<{
         id: string;
@@ -42,6 +45,7 @@ export declare class UsersController {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     update(id: string, dto: UpdateUserDto, req: Request): Promise<{
         id: string;
@@ -50,6 +54,7 @@ export declare class UsersController {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -58,5 +63,6 @@ export declare class UsersController {
         name: string | null;
         email: string;
         role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
     }>;
 }

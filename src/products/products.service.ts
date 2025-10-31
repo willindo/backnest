@@ -26,9 +26,26 @@ export class ProductsService {
     }));
   }
 
+  async generateUniqueSlug(name: string): Promise<string> {
+    function slugify(name: string): string {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-') // Replace spaces/special chars with '-'
+        .replace(/^-+|-+$/g, ''); // Trim hyphens
+    }
+    let base = slugify(name);
+    let slug = base;
+    let counter = 1;
+
+    while (await this.prisma.product.findUnique({ where: { slug } })) {
+      slug = `${base}-${counter++}`;
+    }
+    return slug;
+  }
+
   // 🏗️ Create Product
   async create(dto: CreateProductInput): Promise<Product> {
-    const { sizes, ...rest } = dto;
+    const { sizes, categoryId, ...rest } = dto;
 
     if (dto.price < 0)
       throw new BadRequestException('Price cannot be negative');
@@ -39,9 +56,12 @@ export class ProductsService {
       data: {
         ...rest,
         price: new Prisma.Decimal(dto.price),
+        slug: await this.generateUniqueSlug(dto.name),
         stock: dto.stock ?? 0,
         images: dto.images ?? [],
         gender: dto.gender ?? null,
+        // ✅ use connect if categoryId provided
+        category: categoryId ? { connect: { id: categoryId } } : undefined,
         sizes: sizes?.length
           ? {
               create: sizes.map((s) => ({
