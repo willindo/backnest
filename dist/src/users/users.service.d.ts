@@ -7,12 +7,12 @@ export declare class UsersService {
     findAll(page?: number, limit?: number, role?: 'ADMIN' | 'CUSTOMER'): Promise<{
         data: {
             id: string;
+            email: string;
+            phone: string | null;
+            name: string | null;
+            role: import(".prisma/client").$Enums.Role;
             createdAt: Date;
             updatedAt: Date;
-            name: string | null;
-            email: string;
-            role: import(".prisma/client").$Enums.Role;
-            phone: string | null;
         }[];
         total: number;
         page: number;
@@ -20,38 +20,38 @@ export declare class UsersService {
     }>;
     findOne(id: string): Promise<{
         id: string;
+        email: string;
+        phone: string | null;
+        name: string | null;
+        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
-        email: string;
-        role: import(".prisma/client").$Enums.Role;
-        phone: string | null;
     }>;
     create(dto: CreateUserDto): Promise<{
         id: string;
+        email: string;
+        phone: string | null;
+        name: string | null;
+        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
-        email: string;
-        role: import(".prisma/client").$Enums.Role;
-        phone: string | null;
     }>;
     update(id: string, dto: UpdateUserDto): Promise<{
         id: string;
+        email: string;
+        phone: string | null;
+        name: string | null;
+        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
-        email: string;
-        role: import(".prisma/client").$Enums.Role;
-        phone: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
+        email: string;
+        phone: string | null;
+        name: string | null;
+        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
-        email: string;
-        role: import(".prisma/client").$Enums.Role;
-        phone: string | null;
     }>;
 }

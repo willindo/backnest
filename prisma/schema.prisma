@@ -56,7 +56,7 @@ model Category {
 model Product {
   id            String         @id @default(cuid())
   name          String
-  slug          String?         @unique
+  slug          String?        @unique
   description   String?
   price         Decimal
   stock         Int            @default(0)
@@ -145,22 +145,22 @@ model WishlistItem {
 }
 
 model Order {
-  id               String        @id @default(cuid())
-  user             User          @relation(fields: [userId], references: [id])
-  userId           String
-  address          Address?      @relation(fields: [addressId], references: [id])
-  addressId        String?
-  latestPaymentId  String?       @unique // ✅ optional relation helper
-  items            OrderItem[]
-  totalAmount      Decimal       @default(0)
-  status           OrderStatus   @default(PENDING)
-  paymentStatus    PaymentStatus @default(PENDING)
-  currency         String        @default("INR")
-  shippingCost     Decimal       @default(0)
-  taxAmount        Decimal       @default(0)
-  discountAmount   Decimal       @default(0)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  user            User          @relation(fields: [userId], references: [id])
+  userId          String
+  address         Address?      @relation(fields: [addressId], references: [id])
+  addressId       String?
+  latestPaymentId String?       @unique // ✅ optional relation helper
+  items           OrderItem[]
+  totalAmount     Decimal       @default(0)
+  status          OrderStatus   @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  currency        String        @default("INR")
+  shippingCost    Decimal       @default(0)
+  taxAmount       Decimal       @default(0)
+  discountAmount  Decimal       @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   couponUsages  CouponUsage[] // 👈 Added reverse relation
   Payment       Payment[]

@@ -1,0 +1,19 @@
+| Area                   | Best Practice                                                  | Description                                                                               |
+| ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Transaction Safety** | Uses `prisma.$transaction()`                                   | Ensures atomicity across payment creation, order update, stock reduction, and cart clear. |
+| **Stock Validation**   | Centralized in `validateStock()`                               | Prevents overselling before checkout begins.                                              |
+| **Data Integrity**     | Reduces `ProductSize.quantity` after payment                   | Keeps inventory accurate in real time.                                                    |
+| **Error Handling**     | Throws `BadRequestException` & `NotFoundException`             | Returns proper HTTP status and message for client/UI.                                     |
+| **Discount Flow**      | Supports Coupon & Gift Card layering                           | Mimics real e-commerce discounts — coupon first, then gift card.                          |
+| **Minimal Coupling**   | Keeps `checkout.service.ts` separate from payment gateway SDKs | Allows plugging in Razorpay, Stripe, etc. later easily.                                   |
+| **Extendable**         | Can add shipping, tax, or address verification                 | Order already linked to `Address` model for next step.                                    |
+ 
+ 🔜 Next Phases (Optional Enhancements)
+
+Step 3: Add Razorpay order creation before frontend redirect.
+
+Step 4: Implement onPaymentFailure() to revert stock if payment fails.
+
+Step 5: Generate invoice PDF or confirmation email after successful payment.
+
+Step 6: Add admin dashboard for Orders, Coupons, Gift Cards.

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { RazorpayProvider } from './providers/razorpay.provider';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
@@ -20,6 +21,10 @@ export class PaymentsService {
   ) {
     const keyId = this.config.get<string>('RAZORPAY_KEY_ID')!;
     this.keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET')!;
+    console.log('🪙 Razorpay keys loaded:', {
+      keyId,
+      hasSecret: !!this.keySecret,
+    });
     this.razorpay = new RazorpayProvider(keyId, this.keySecret);
   }
 
@@ -126,7 +131,7 @@ export class PaymentsService {
     signature: string,
     webhookSecret: string,
   ) {
-    const crypto = require('crypto');
+    // const crypto = require('crypto');
     const expected = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawBody)

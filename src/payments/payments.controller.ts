@@ -6,6 +6,7 @@ import {
   Req,
   RawBodyRequest,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { ConfigService } from '@nestjs/config';
@@ -22,8 +23,21 @@ export class PaymentsController {
   @Post('create-order')
   async createOrder(@Body() body: { orderId: string; amount: number }) {
     const { orderId, amount } = body;
-    if (!orderId || !amount) throw new Error('orderId and amount required');
-    return this.paymentsService.createOrderForInternalOrder(orderId, amount);
+    if (!orderId || !amount)
+      throw new BadRequestException('orderId and amount required');
+
+    const res = await this.paymentsService.createOrderForInternalOrder(
+      orderId,
+      amount,
+    );
+    // res currently returns { razorpayOrderId, amount, currency }
+    return {
+      ...res,
+      id: res.razorpayOrderId,
+      razorpayOrderId: res.razorpayOrderId,
+      amount: Math.round(Number(res.amount) * 100), // paise if required
+      currency: res.currency,
+    };
   }
 
   // Called by client after Razorpay popup success
@@ -41,43 +55,47 @@ export class PaymentsController {
     @Headers('x-razorpay-signature') signature: string,
   ) {
     const raw = req.rawBody as Buffer;
-    const webhookSecret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET')!;
-    if (
-      !this.paymentsService.verifyWebhookSignature(
-        raw,
-        signature,
-        webhookSecret,
-      )
-    ) {
-      this.logger.warn('Invalid webhook signature');
+
+    const webhookSecret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET');
+    if (!webhookSecret) throw new BadRequestException('Webhook secret missing');
+
+    const isValid = this.paymentsService.verifyWebhookSignature(
+      raw,
+      signature,
+      webhookSecret,
+    );
+
+    if (!isValid) {
+      this.logger.warn('Invalid Razorpay webhook signature');
       return { ok: false };
     }
 
     const payload = JSON.parse(raw.toString());
-    // handle events: payment.captured, payment.failed, order.paid etc.
-    // Example: when payment captured, update DB
-    if (payload.event === 'payment.captured') {
-      const {
-        payload: {
-          payment: { entity },
-        },
-      } = payload;
-      // entity contains order_id and id (payment id)
+    const event = payload.event;
+
+    if (event === 'payment.captured') {
+      const entity = payload.payload.payment.entity;
       const razorpayOrderId = entity.order_id;
       const razorpayPaymentId = entity.id;
-      // You may want to find internal order by payment record
-      await this.paymentsService
-        .verifyPayment({
+
+      try {
+        await this.paymentsService.verifyPayment({
           orderId:
             entity.notes?.internal_order_id ??
             (await this.lookupInternalOrderId(razorpayOrderId)),
           razorpay_order_id: razorpayOrderId,
           razorpay_payment_id: razorpayPaymentId,
-          razorpay_signature: '', // webhook verification already done; pass empty string or adjust verifyPayment to skip signature check when from webhook
-        })
-        .catch((err) =>
-          this.logger.error('Webhook reconciliation failed', err),
+          razorpay_signature: '', // already verified
+        });
+
+        this.logger.log(
+          `✅ Webhook processed: payment.captured [${razorpayPaymentId}]`,
         );
+      } catch (err) {
+        this.logger.error('Webhook reconciliation failed', err);
+      }
+    } else {
+      this.logger.log(`Unhandled Razorpay event: ${event}`);
     }
 
     return { ok: true };

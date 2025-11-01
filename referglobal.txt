@@ -134,3 +134,14 @@ curl -X PATCH http://localhost:3001/products/cmhcy3q640000cl4a1k5r36ui \
       { "size": "L", "quantity": 10 }
     ]
   }'
+  🚀 (Optional Future Enhancements)
+
+Save for Later feature per item.
+
+Estimate Shipping / Tax by location.
+
+Multi-currency / price localization.
+
+Inline loading states (spinners during cart updates).
+
+Real-time sync if cart is backend-stored (for multi-tab support).

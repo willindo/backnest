@@ -8,23 +8,23 @@ export declare class AuthService {
     constructor(prisma: PrismaService, jwt: JwtService);
     validateUser(email: string, password: string): Promise<{
         id: string;
+        email: string;
+        phone: string | null;
+        password: string;
+        name: string | null;
+        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
-        email: string;
-        password: string;
-        role: import(".prisma/client").$Enums.Role;
-        phone: string | null;
     }>;
     register(dto: RegisterDto): Promise<{
         id: string;
+        email: string;
+        phone: string | null;
+        password: string;
+        name: string | null;
+        role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
-        name: string | null;
-        email: string;
-        password: string;
-        role: import(".prisma/client").$Enums.Role;
-        phone: string | null;
     }>;
     login(user: any, res: Res): Promise<{
         message: string;
