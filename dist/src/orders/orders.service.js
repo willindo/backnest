@@ -12,162 +12,112 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
-const client_1 = require("@prisma/client");
 let OrdersService = class OrdersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    calculateTotal(items) {
-        return items.reduce((s, it) => s + it.quantity * it.price, 0);
+    async createOrder(userId, data) {
+        const { addressId, items, totalAmount, couponId, giftCardId } = data;
+        const address = await this.prisma.address.findFirst({
+            where: { id: addressId, userId },
+        });
+        if (!address)
+            throw new common_1.ForbiddenException('Invalid address');
+        const order = await this.prisma.order.create({
+            data: {
+                userId,
+                addressId,
+                totalAmount,
+                items: {
+                    create: (items !== null && items !== void 0 ? items : []).map((item) => ({
+                        product: { connect: { id: item.productId } },
+                        quantity: item.quantity,
+                        priceAtPurchase: item.priceAtPurchase,
+                        size: item.size ? item.size : undefined,
+                    })),
+                },
+                couponUsages: couponId
+                    ? {
+                        create: { couponId, userId },
+                    }
+                    : undefined,
+                GiftCardUsage: giftCardId
+                    ? {
+                        create: { giftCardId, amountUsed: totalAmount },
+                    }
+                    : undefined,
+            },
+            include: {
+                items: {
+                    include: { product: { select: { name: true, images: true } } },
+                },
+                address: true,
+            },
+        });
+        return order;
     }
-    async createOrderFromPayload(userId, payload) {
-        var _a, _b, _c, _d;
-        let itemsInput = (_a = payload.items) !== null && _a !== void 0 ? _a : [];
-        if (itemsInput.length === 0) {
-            const cart = await this.prisma.cart.findUnique({
-                where: { userId },
-                include: { items: true },
-            });
-            if (!cart || !cart.items.length) {
-                throw new common_1.HttpException('Cart is empty', common_1.HttpStatus.BAD_REQUEST);
-            }
-            itemsInput = cart.items.map((ci) => {
-                var _a;
-                return ({
-                    productId: ci.productId,
-                    quantity: ci.quantity,
-                    size: (_a = ci.size) !== null && _a !== void 0 ? _a : undefined,
-                    price: Number(ci.productPrice),
-                });
-            });
-        }
-        const itemsWithPrice = await Promise.all(itemsInput.map(async (it) => {
-            if (typeof it.price === 'number')
-                return it;
-            const product = await this.prisma.product.findUnique({
-                where: { id: it.productId },
-            });
-            if (!product)
-                throw new common_1.HttpException(`Product ${it.productId} not found`, common_1.HttpStatus.BAD_REQUEST);
-            return Object.assign(Object.assign({}, it), { price: Number(product.price) });
-        }));
-        const total = this.calculateTotal(itemsWithPrice);
-        const paymentMethod = (_b = payload.paymentMethod) !== null && _b !== void 0 ? _b : 'COD';
-        const currency = (_c = payload.currency) !== null && _c !== void 0 ? _c : 'INR';
-        try {
-            const createdOrder = await this.prisma.$transaction(async (tx) => {
-                for (const it of itemsWithPrice) {
-                    if (it.size) {
-                        const updated = await tx.productSize.updateMany({
-                            where: {
-                                productId: it.productId,
-                                size: it.size,
-                                quantity: { gte: it.quantity },
-                            },
-                            data: { quantity: { decrement: it.quantity } },
-                        });
-                        if (updated.count === 0) {
-                            throw new common_1.HttpException(`Insufficient stock for product ${it.productId} size ${it.size}`, common_1.HttpStatus.CONFLICT);
-                        }
-                    }
-                    else {
-                        const updated = await tx.product.updateMany({
-                            where: { id: it.productId, stock: { gte: it.quantity } },
-                            data: { stock: { decrement: it.quantity } },
-                        });
-                        if (updated.count === 0) {
-                            throw new common_1.HttpException(`Insufficient stock for product ${it.productId}`, common_1.HttpStatus.CONFLICT);
-                        }
-                    }
-                }
-                const order = await tx.order.create({
-                    data: {
-                        userId,
-                        totalAmount: total,
-                        status: paymentMethod === 'COD'
-                            ? client_1.OrderStatus.PROCESSING
-                            : client_1.OrderStatus.PENDING,
-                        paymentStatus: paymentMethod === 'COD'
-                            ? client_1.PaymentStatus.PAID
-                            : client_1.PaymentStatus.PENDING,
-                        items: {
-                            create: itemsWithPrice.map((it) => ({
-                                productId: it.productId,
-                                quantity: it.quantity,
-                                priceAtPurchase: it.price,
-                            })),
-                        },
-                    },
-                    include: { items: true },
-                });
-                await tx.cartItem.deleteMany({
-                    where: { cart: { userId } },
-                });
-                return order;
-            });
-            return createdOrder;
-        }
-        catch (err) {
-            if (err instanceof common_1.HttpException)
-                throw err;
-            if (err instanceof Error) {
-                throw new common_1.HttpException((_d = err.message) !== null && _d !== void 0 ? _d : 'Order creation failed', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-            throw new common_1.HttpException('Unknown error during order creation', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    async getUserOrders(userId) {
+        return this.prisma.order.findMany({
+            where: { userId },
+            include: {
+                items: { include: { product: true } },
+                address: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
     }
     async getOrderById(orderId) {
+        return this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                items: { include: { product: true } },
+                address: true,
+            },
+        });
+    }
+    async getOrderByIdWithOwnership(orderId, userId) {
         const order = await this.prisma.order.findUnique({
             where: { id: orderId },
             include: {
                 items: { include: { product: true } },
-                user: false,
+                address: true,
             },
         });
         if (!order)
-            throw new common_1.HttpException('Order not found', common_1.HttpStatus.NOT_FOUND);
+            throw new common_1.NotFoundException('Order not found');
+        if (order.userId !== userId)
+            throw new common_1.ForbiddenException('Access denied');
         return order;
     }
-    async listForUser(userId) {
-        return this.prisma.order.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-            include: { items: { include: { product: true } } },
-        });
+    async getInvoiceData(orderId, userId) {
+        var _a, _b, _c;
+        const order = await this.getOrderByIdWithOwnership(orderId, userId);
+        return {
+            invoiceNo: `INV-${order.id.slice(0, 8).toUpperCase()}`,
+            date: order.createdAt,
+            customer: {
+                name: (_a = order.address) === null || _a === void 0 ? void 0 : _a.line1,
+                address: `${(_b = order.address) === null || _b === void 0 ? void 0 : _b.city}, ${(_c = order.address) === null || _c === void 0 ? void 0 : _c.country}`,
+            },
+            items: order.items.map((item) => ({
+                product: item.product.name,
+                quantity: item.quantity,
+                price: item.priceAtPurchase,
+                subtotal: Number(item.priceAtPurchase) * item.quantity,
+            })),
+            totalAmount: order.totalAmount,
+            tax: order.taxAmount,
+            discount: order.discountAmount,
+            grandTotal: Number(order.totalAmount) +
+                Number(order.taxAmount) -
+                Number(order.discountAmount),
+        };
     }
-    async cancelOrder(orderId) {
-        var _a;
-        const order = await this.prisma.order.findUnique({
-            where: { id: orderId },
-            include: { items: true },
+    async getAllOrders() {
+        return this.prisma.order.findMany({
+            include: { user: true, items: true },
+            orderBy: { createdAt: 'desc' },
         });
-        if (!order)
-            throw new common_1.HttpException('Order not found', common_1.HttpStatus.NOT_FOUND);
-        if (order.status === client_1.OrderStatus.CANCELLED)
-            return order;
-        try {
-            await this.prisma.$transaction(async (tx) => {
-                for (const it of order.items) {
-                    await tx.product.update({
-                        where: { id: it.productId },
-                        data: { stock: { increment: it.quantity } },
-                    });
-                }
-                await tx.order.update({
-                    where: { id: orderId },
-                    data: { status: client_1.OrderStatus.CANCELLED },
-                });
-            });
-            return this.getOrderById(orderId);
-        }
-        catch (err) {
-            if (err instanceof common_1.HttpException)
-                throw err;
-            if (err instanceof Error) {
-                throw new common_1.HttpException((_a = err.message) !== null && _a !== void 0 ? _a : 'Cancel failed', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-            throw new common_1.HttpException('Unknown error during cancellation', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
-        }
     }
 };
 exports.OrdersService = OrdersService;

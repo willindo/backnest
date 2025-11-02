@@ -1,28 +1,45 @@
-// src/checkout/checkout.service.ts
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { validateStock } from './utils/stock-validator';
-import { calculateTotal } from './utils/checkout-calculator';
+import { PrismaService } from 'prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Coupon, GiftCard, OrderStatus, PaymentStatus } from '@prisma/client';
-import { PrismaService } from 'prisma/prisma.service';
+import { validateStock } from './utils/stock-validator';
+import { calculateTotal } from './utils/checkout-calculator';
+import { CheckoutBody, CheckoutBodySchema } from './dto/checkout.dto';
 
 @Injectable()
 export class CheckoutsService {
   constructor(private prisma: PrismaService) {}
+  private async clearCart(userId: string, cl = this.prisma) {
+    return cl.cart.update({
+      where: { userId },
+      data: { items: { deleteMany: {} } },
+    });
+  }
 
   /**
-   * Step 1: Start Checkout Process
-   * Validates stock, calculates total, applies discounts, creates Order draft.
+   * STEP 1 — Start Checkout
+   * Validates cart, applies discounts, and creates an order draft.
    */
-  async startCheckout(
-    userId: string,
-    couponCode?: string,
-    giftCardCode?: string,
-  ) {
+  async startCheckout(userId: string, body: CheckoutBody) {
+    // ✅ Validate request body via Zod schema
+    const parsed = CheckoutBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error);
+    }
+    const {
+      cartId,
+      addressId,
+      address,
+      paymentMethod,
+      couponCode,
+      giftCardCode,
+    } = parsed.data;
+
+    // ✅ Fetch user's cart
     const cart = await this.prisma.cart.findUnique({
       where: { userId },
       include: {
@@ -36,37 +53,62 @@ export class CheckoutsService {
       throw new BadRequestException('Cart is empty');
     }
 
-    // ✅ Validate stock before proceeding
+    // ✅ Validate stock
     validateStock(cart.items);
 
-    // ✅ Calculate total cart price
+    // ✅ Calculate totals
     const subtotal = calculateTotal(cart.items);
 
-    // ✅ Apply marketing discounts
+    // ✅ Initialize discounts
     let discountAmount = 0;
     let appliedCoupon: Coupon | null = null;
     let appliedGiftCard: GiftCard | null = null;
 
+    // --- Coupon logic ---
     if (couponCode) {
       appliedCoupon = await this.validateCoupon(userId, couponCode, subtotal);
-      discountAmount = this.calculateCouponDiscount(appliedCoupon, subtotal);
+      discountAmount += this.calculateCouponDiscount(appliedCoupon, subtotal);
     }
 
+    // --- Gift Card logic ---
     if (giftCardCode) {
       appliedGiftCard = await this.validateGiftCard(giftCardCode);
-      const useAmount = Math.min(
+      const usableAmount = Math.min(
         Number(appliedGiftCard.balance),
         subtotal - discountAmount,
       );
-      discountAmount += useAmount;
+      discountAmount += usableAmount;
     }
 
-    const finalAmount = subtotal - discountAmount;
+    const finalAmount = Math.max(0, subtotal - discountAmount);
+
+    // ✅ Address handling
+    let finalAddressId = addressId ?? null;
+
+    if (!finalAddressId && address) {
+      const newAddress = await this.prisma.address.create({
+        data: {
+          userId,
+          line1: address.line1,
+          line2: address.line2 ?? null,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country ?? 'India', // 👈 ensure always string
+        },
+      });
+      finalAddressId = newAddress.id;
+    }
+
+    if (!finalAddressId) {
+      throw new BadRequestException('Shipping address is required');
+    }
 
     // ✅ Create pending order
     const order = await this.prisma.order.create({
       data: {
         userId,
+        addressId: finalAddressId,
         totalAmount: new Decimal(finalAmount),
         discountAmount: new Decimal(discountAmount),
         taxAmount: new Decimal(0),
@@ -82,22 +124,25 @@ export class CheckoutsService {
           })),
         },
       },
-      include: { items: true },
+      include: { items: true, address: true },
     });
 
     return {
       message: 'Checkout initiated successfully',
+      orderId: order.id,
       subtotal,
       discountAmount,
       finalAmount,
-      orderId: order.id,
       appliedCoupon: appliedCoupon?.code,
       appliedGiftCard: appliedGiftCard?.code,
+      address: order.address,
+      paymentMethod,
     };
   }
 
   /**
-   * Step 2: Confirm Payment (after Razorpay or any gateway success)
+   * STEP 2 — Confirm Payment
+   * Called after Razorpay (or any gateway) success verification.
    */
   async confirmPayment(
     userId: string,
@@ -119,7 +164,7 @@ export class CheckoutsService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      // ✅ Create payment record
+      // ✅ Record payment
       const payment = await tx.payment.create({
         data: {
           userId,
@@ -132,7 +177,7 @@ export class CheckoutsService {
         },
       });
 
-      // ✅ Update order status
+      // ✅ Update order
       await tx.order.update({
         where: { id: orderId },
         data: {
@@ -142,24 +187,23 @@ export class CheckoutsService {
         },
       });
 
-      // ✅ Reduce product stock
+      // ✅ Decrease stock
       for (const item of order.items) {
         await tx.productSize.updateMany({
           where: {
             productId: item.productId,
             size: item.size!,
           },
-          data: {
-            quantity: { decrement: item.quantity },
-          },
+          data: { quantity: { decrement: item.quantity } },
         });
       }
 
-      // ✅ Clear cart after successful checkout
-      await tx.cart.update({
-        where: { userId },
-        data: { items: { deleteMany: {} } },
-      });
+      // ✅ Empty cart
+      await this.clearCart(order.userId);
+      // await tx.cart.update({
+      //   where: { userId },
+      //   data: { items: { deleteMany: {} } },
+      // });
 
       return {
         message: 'Payment confirmed & order finalized successfully',
@@ -169,9 +213,10 @@ export class CheckoutsService {
     });
   }
 
-  /**
-   * Validate Coupon (expiry, usage, min purchase)
-   */
+  // ----------------------------------------------------------------------
+  // 💡 Helper methods — Coupon & GiftCard validators
+  // ----------------------------------------------------------------------
+
   private async validateCoupon(userId: string, code: string, subtotal: number) {
     const coupon = await this.prisma.coupon.findUnique({ where: { code } });
     if (!coupon || !coupon.active)
@@ -191,37 +236,33 @@ export class CheckoutsService {
     const alreadyUsed = await this.prisma.couponUsage.findFirst({
       where: { userId, couponId: coupon.id },
     });
-
-    if (alreadyUsed) throw new BadRequestException('Coupon already used');
+    if (alreadyUsed)
+      throw new BadRequestException('Coupon already used by this user');
 
     return coupon;
   }
 
   private calculateCouponDiscount(coupon: Coupon, subtotal: number) {
-    let discount = 0;
     if (coupon.discountType === 'PERCENTAGE') {
-      discount = (subtotal * coupon.discountValue) / 100;
-      if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+      let discount = (subtotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount) {
+        discount = Math.min(discount, coupon.maxDiscount);
+      }
+      return discount;
     } else if (coupon.discountType === 'FIXED') {
-      discount = coupon.discountValue;
+      return coupon.discountValue;
     }
-    return discount;
+    return 0;
   }
 
-  /**
-   * Validate Gift Card
-   */
   private async validateGiftCard(code: string) {
     const giftCard = await this.prisma.giftCard.findUnique({ where: { code } });
     if (!giftCard || !giftCard.isActive)
       throw new BadRequestException('Invalid or inactive gift card');
-
     if (giftCard.expiresAt && new Date() > giftCard.expiresAt)
       throw new BadRequestException('Gift card expired');
-
     if (Number(giftCard.balance) <= 0)
       throw new BadRequestException('Gift card has no balance');
-
     return giftCard;
   }
 }

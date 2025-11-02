@@ -1,220 +1,131 @@
-// src/orders/orders.service.ts
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CreateOrderInput } from './schemas/create-order.schema';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from 'prisma/prisma.service';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { Size } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  private calculateTotal(items: { quantity: number; price: number }[]) {
-    return items.reduce((s, it) => s + it.quantity * it.price, 0);
+  // ✅ Create Order after successful payment
+  async createOrder(userId: string, data: CreateOrderDto) {
+    const { addressId, items, totalAmount, couponId, giftCardId } = data;
+
+    // Verify address ownership
+    const address = await this.prisma.address.findFirst({
+      where: { id: addressId, userId },
+    });
+    if (!address) throw new ForbiddenException('Invalid address');
+
+    // Create order with order items
+    const order = await this.prisma.order.create({
+      data: {
+        userId,
+        addressId,
+        totalAmount,
+        items: {
+          create: (items ?? []).map((item) => ({
+            product: { connect: { id: item.productId } },
+            quantity: item.quantity,
+            priceAtPurchase: item.priceAtPurchase,
+            size: item.size ? (item.size as Size) : undefined,
+          })),
+        },
+        couponUsages: couponId
+          ? {
+              create: { couponId, userId },
+            }
+          : undefined,
+        GiftCardUsage: giftCardId
+          ? {
+              create: { giftCardId, amountUsed: totalAmount },
+            }
+          : undefined,
+      },
+      include: {
+        items: {
+          include: { product: { select: { name: true, images: true } } },
+        },
+        address: true,
+      },
+    });
+
+    return order;
   }
 
-  /**
-   * Creates an order either from body.items or from the user's cart.
-   * Entire operation is wrapped in a transaction:
-   *  - validate & decrement stock (ProductSize.quantity or Product.stock)
-   *  - create Order & OrderItem (price snapshot)
-   *  - clear user's cart items
-   *
-   * If any validation fails, transaction rolls back.
-   */
-  async createOrderFromPayload(userId: string, payload: CreateOrderInput) {
-    // Resolve items: client-provided or from cart
-    let itemsInput = payload.items ?? [];
-
-    if (itemsInput.length === 0) {
-      // build from cart
-      const cart = await this.prisma.cart.findUnique({
-        where: { userId },
-        include: { items: true },
-      });
-      if (!cart || !cart.items.length) {
-        throw new HttpException('Cart is empty', HttpStatus.BAD_REQUEST);
-      }
-
-      itemsInput = cart.items.map((ci) => ({
-        productId: ci.productId,
-        quantity: ci.quantity,
-        size: ci.size ?? undefined,
-        price: Number(ci.productPrice),
-      }));
-    }
-
-    // enrich prices where missing
-    const itemsWithPrice = await Promise.all(
-      itemsInput.map(async (it) => {
-        if (typeof it.price === 'number') return it;
-        const product = await this.prisma.product.findUnique({
-          where: { id: it.productId },
-        });
-        if (!product)
-          throw new HttpException(
-            `Product ${it.productId} not found`,
-            HttpStatus.BAD_REQUEST,
-          );
-        return { ...it, price: Number(product.price) };
-      }),
-    );
-
-    const total = this.calculateTotal(
-      itemsWithPrice as { quantity: number; price: number }[],
-    );
-    const paymentMethod = payload.paymentMethod ?? 'COD';
-    const currency = payload.currency ?? 'INR';
-
-    try {
-      const createdOrder = await this.prisma.$transaction(async (tx) => {
-        // 1) Validate & decrement stock
-        for (const it of itemsWithPrice) {
-          if (it.size) {
-            // update ProductSize.quantity if size specified
-            const updated = await tx.productSize.updateMany({
-              where: {
-                productId: it.productId,
-                size: it.size as any,
-                quantity: { gte: it.quantity },
-              },
-              data: { quantity: { decrement: it.quantity } },
-            });
-            if (updated.count === 0) {
-              throw new HttpException(
-                `Insufficient stock for product ${it.productId} size ${it.size}`,
-                HttpStatus.CONFLICT,
-              );
-            }
-          } else {
-            // fallback to Product.stock
-            const updated = await tx.product.updateMany({
-              where: { id: it.productId, stock: { gte: it.quantity } },
-              data: { stock: { decrement: it.quantity } },
-            });
-            if (updated.count === 0) {
-              throw new HttpException(
-                `Insufficient stock for product ${it.productId}`,
-                HttpStatus.CONFLICT,
-              );
-            }
-          }
-        }
-
-        // 2) Create order + items (snapshot price)
-        const order = await tx.order.create({
-          data: {
-            userId,
-            totalAmount: total,
-            // ✅ fix enum mismatch
-            status:
-              paymentMethod === 'COD'
-                ? OrderStatus.PROCESSING
-                : OrderStatus.PENDING,
-            paymentStatus:
-              paymentMethod === 'COD'
-                ? PaymentStatus.PAID
-                : PaymentStatus.PENDING,
-            // address: payload.address ? (payload.address as any) : null,
-            // notes: payload.notes ?? null,
-            items: {
-              create: itemsWithPrice.map((it) => ({
-                productId: it.productId,
-                quantity: it.quantity,
-                priceAtPurchase: it.price as any,
-              })),
-            },
-          },
-          include: { items: true },
-        });
-
-        // 3) Clear cart items (if cart exists)
-        await tx.cartItem.deleteMany({
-          where: { cart: { userId } as any }, // delete items for user cart
-        });
-
-        return order;
-      });
-
-      return createdOrder;
-    } catch (err: unknown) {
-      // ✅ fix TS18046 by typing err
-      if (err instanceof HttpException) throw err;
-      if (err instanceof Error) {
-        throw new HttpException(
-          err.message ?? 'Order creation failed',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-      throw new HttpException(
-        'Unknown error during order creation',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  // ✅ Fetch all orders for a user
+  async getUserOrders(userId: string) {
+    return this.prisma.order.findMany({
+      where: { userId },
+      include: {
+        items: { include: { product: true } },
+        address: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
+  // ✅ Fetch single order without ownership (internal use)
   async getOrderById(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: { include: { product: true } },
+        address: true,
+      },
+    });
+  }
+
+  // ✅ Fetch single order with ownership check
+  async getOrderByIdWithOwnership(orderId: string, userId: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
         items: { include: { product: true } },
-        user: false,
+        address: true,
       },
     });
-    if (!order)
-      throw new HttpException('Order not found', HttpStatus.NOT_FOUND);
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.userId !== userId) throw new ForbiddenException('Access denied');
     return order;
   }
 
-  async listForUser(userId: string) {
-    return this.prisma.order.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      include: { items: { include: { product: true } } },
-    });
+  // ✅ Example invoice generator (safe and realistic)
+  async getInvoiceData(orderId: string, userId: string) {
+    const order = await this.getOrderByIdWithOwnership(orderId, userId);
+
+    return {
+      invoiceNo: `INV-${order.id.slice(0, 8).toUpperCase()}`,
+      date: order.createdAt,
+      customer: {
+        name: order.address?.line1,
+        address: `${order.address?.city}, ${order.address?.country}`,
+      },
+      items: order.items.map((item) => ({
+        product: item.product.name,
+        quantity: item.quantity,
+        price: item.priceAtPurchase,
+        subtotal: Number(item.priceAtPurchase) * item.quantity,
+      })),
+      totalAmount: order.totalAmount,
+      tax: order.taxAmount,
+      discount: order.discountAmount,
+      grandTotal:
+        Number(order.totalAmount) +
+        Number(order.taxAmount) -
+        Number(order.discountAmount),
+    };
   }
 
-  /**
-   * Cancel an order and restock items.
-   * NOTE: orderItem currently does not persist `size`. If you need size-aware restock,
-   * add `size` field to OrderItem and persist it when creating the order.
-   */
-  async cancelOrder(orderId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
+  // ✅ For admin dashboard (not user-facing)
+  async getAllOrders() {
+    return this.prisma.order.findMany({
+      include: { user: true, items: true },
+      orderBy: { createdAt: 'desc' },
     });
-    if (!order)
-      throw new HttpException('Order not found', HttpStatus.NOT_FOUND);
-    if (order.status === OrderStatus.CANCELLED) return order;
-
-    try {
-      await this.prisma.$transaction(async (tx) => {
-        // Restock: best-effort to product.stock (since OrderItem doesn't store size)
-        for (const it of order.items) {
-          await tx.product.update({
-            where: { id: it.productId },
-            data: { stock: { increment: it.quantity } },
-          });
-        }
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: OrderStatus.CANCELLED },
-        });
-      });
-
-      return this.getOrderById(orderId);
-    } catch (err: unknown) {
-      if (err instanceof HttpException) throw err;
-      if (err instanceof Error) {
-        throw new HttpException(
-          err.message ?? 'Cancel failed',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-      throw new HttpException(
-        'Unknown error during cancellation',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
   }
 }

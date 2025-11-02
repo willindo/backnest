@@ -17,6 +17,6 @@ export class CheckoutController {
     @Body(new ZodValidationPipe(CheckoutBodySchema))
     body: CheckoutBody,
   ) {
-    return this.checkoutService.startCheckout(userId);
+    return this.checkoutService.startCheckout(userId, body);
   }
 }

@@ -6,10 +6,10 @@ export declare class UsersController {
     constructor(usersService: UsersService);
     getMe(req: Request): Promise<{
         user: {
+            name: string | null;
             id: string;
             email: string;
             phone: string | null;
-            name: string | null;
             role: import(".prisma/client").$Enums.Role;
             createdAt: Date;
             updatedAt: Date;
@@ -17,10 +17,10 @@ export declare class UsersController {
     }>;
     findAll(page?: string, limit?: string, role?: string): Promise<{
         data: {
+            name: string | null;
             id: string;
             email: string;
             phone: string | null;
-            name: string | null;
             role: import(".prisma/client").$Enums.Role;
             createdAt: Date;
             updatedAt: Date;
@@ -30,37 +30,37 @@ export declare class UsersController {
         limit: number;
     }>;
     findOne(id: string, req: Request): Promise<{
+        name: string | null;
         id: string;
         email: string;
         phone: string | null;
-        name: string | null;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
     }>;
     create(dto: CreateUserDto): Promise<{
+        name: string | null;
         id: string;
         email: string;
         phone: string | null;
-        name: string | null;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
     }>;
     update(id: string, dto: UpdateUserDto, req: Request): Promise<{
+        name: string | null;
         id: string;
         email: string;
         phone: string | null;
-        name: string | null;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
     }>;
     remove(id: string): Promise<{
+        name: string | null;
         id: string;
         email: string;
         phone: string | null;
-        name: string | null;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;

@@ -1,16 +1,22 @@
-// src/checkout/dto/checkout.dto.ts
 import { z } from 'zod';
 
-/**
- * Minimal checkout request:
- * - optionally include addressId (if you support addresses)
- * - optionally include paymentMethod (placeholder)
- */
-export const CheckoutBodySchema = z.object({
-  cartId: z.string(),
-  addressId: z.string().uuid().nullable().optional(),
-  paymentMethod: z.string().optional(), // e.g., "stripe", "razorpay"
-  // you can extend with shipping notes, coupon codes, etc.
+export const AddressInputSchema = z.object({
+  line1: z.string().min(1),
+  line2: z.string().optional(),
+  city: z.string().min(1),
+  state: z.string().min(1),
+  postalCode: z.string().min(4),
+  country: z.string().default('India').optional(),
 });
 
+export const CheckoutBodySchema = z.object({
+  cartId: z.string().optional(),
+  addressId: z.string().uuid().nullable().optional(),
+  address: AddressInputSchema.optional(),
+  paymentMethod: z.string().default('razorpay').optional(),
+  couponCode: z.string().optional(),
+  giftCardCode: z.string().optional(),
+});
+
+export type AddressInput = z.infer<typeof AddressInputSchema>;
 export type CheckoutBody = z.infer<typeof CheckoutBodySchema>;

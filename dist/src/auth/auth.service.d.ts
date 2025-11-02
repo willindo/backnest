@@ -7,21 +7,21 @@ export declare class AuthService {
     private readonly jwt;
     constructor(prisma: PrismaService, jwt: JwtService);
     validateUser(email: string, password: string): Promise<{
+        name: string | null;
         id: string;
         email: string;
-        phone: string | null;
         password: string;
-        name: string | null;
+        phone: string | null;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;
     }>;
     register(dto: RegisterDto): Promise<{
+        name: string | null;
         id: string;
         email: string;
-        phone: string | null;
         password: string;
-        name: string | null;
+        phone: string | null;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
         updatedAt: Date;

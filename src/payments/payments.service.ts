@@ -21,10 +21,7 @@ export class PaymentsService {
   ) {
     const keyId = this.config.get<string>('RAZORPAY_KEY_ID')!;
     this.keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET')!;
-    console.log('🪙 Razorpay keys loaded:', {
-      keyId,
-      hasSecret: !!this.keySecret,
-    });
+    this.logger.log('🪙 Razorpay keys loaded');
     this.razorpay = new RazorpayProvider(keyId, this.keySecret);
   }
 
@@ -33,7 +30,6 @@ export class PaymentsService {
    */
   async createOrderForInternalOrder(orderId: string, amountInRupees: number) {
     try {
-      // amount in paise for Razorpay
       const amountPaise = Math.round(amountInRupees * 100);
 
       const rpOrder = await this.razorpay.createOrder({
@@ -42,22 +38,25 @@ export class PaymentsService {
         receipt: `order_${orderId}`,
       });
 
-      // Persist Payment record — idempotent safe (if you re-call, update existing)
+      // upsert Payment record for tracking (store amount in paise)
+      const dbOrder = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        select: { userId: true },
+      });
+      if (!dbOrder) throw new BadRequestException('Internal order not found');
+
       await this.prisma.payment.upsert({
-        where: { razorpayOrderId: rpOrder.id }, // UNIQUE constraint key
+        where: { razorpayOrderId: rpOrder.id },
         create: {
-          userId: (await this.prisma.order.findUnique({
-            where: { id: orderId },
-            select: { userId: true },
-          }))!.userId,
+          userId: dbOrder.userId,
           orderId,
-          razorpayOrderId: rpOrder.id, // store Razorpay Order ID
-          amount: amountPaise,
+          razorpayOrderId: rpOrder.id,
+          amount: amountPaise, // store paise (or change to rupees as you prefer)
           currency: rpOrder.currency ?? 'INR',
           status: 'PENDING',
         },
         update: {
-          razorpayOrderId: rpOrder.id,
+          orderId,
           amount: amountPaise,
           currency: rpOrder.currency ?? 'INR',
           status: 'PENDING',
@@ -76,7 +75,8 @@ export class PaymentsService {
   }
 
   /**
-   * Verify payment callback from client (or webhook) and reconcile DB
+   * Verify payment callback from client (with signature) and reconcile DB.
+   * Expects: { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }
    */
   async verifyPayment({
     orderId: internalOrderId,
@@ -89,52 +89,206 @@ export class PaymentsService {
     razorpay_payment_id: string;
     razorpay_signature: string;
   }) {
-    const ok = this.razorpay.verifySignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      this.keySecret,
-    );
-    if (!ok) {
+    // verify signature (razorpay_order_id | razorpay_payment_id)
+    const expected = crypto
+      .createHmac('sha256', this.keySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expected !== razorpay_signature) {
       throw new BadRequestException('Invalid signature');
     }
 
-    // Update Payment and Order atomically
-    await this.prisma.$transaction(async (tx) => {
-      await tx.payment.updateMany({
+    // reconcile DB: atomically update Payment row and Order
+    return await this.prisma.$transaction(async (tx) => {
+      // 1) Update payment rows that match this razorpayOrderId & internal order (idempotent)
+      // If a payment row doesn't exist (rare), create one.
+      let payment = await tx.payment.findFirst({
         where: { orderId: internalOrderId, razorpayOrderId: razorpay_order_id },
-        data: {
-          razorpayPaymentId: razorpay_payment_id, // payment id from Razorpay
-          signature: razorpay_signature,
-          status: 'PAID',
-        },
       });
 
+      if (!payment) {
+        payment = await tx.payment.create({
+          data: {
+            userId: (await tx.order.findUnique({
+              where: { id: internalOrderId },
+              select: { userId: true },
+            }))!.userId,
+            orderId: internalOrderId,
+            razorpayOrderId: razorpay_order_id,
+            razorpayPaymentId: razorpay_payment_id,
+            signature: razorpay_signature,
+            amount: 0, // optional — keep as 0 or fetch from rp if needed
+            status: 'PAID',
+          },
+        });
+      } else {
+        payment = await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            razorpayPaymentId: razorpay_payment_id,
+            signature: razorpay_signature,
+            status: 'PAID',
+          },
+        });
+      }
+
+      // 2) Update order to point to internal payment id and mark paid/processing
       await tx.order.update({
         where: { id: internalOrderId },
         data: {
-          latestPaymentId: razorpay_payment_id, // ✅ now valid
+          latestPaymentId: payment.id,
           paymentStatus: 'PAID',
           status: 'PROCESSING',
         },
       });
-    });
 
-    return { success: true };
+      // 3) (Optional) reduce stock, clear cart, etc. — depending on your flow you may want to
+      // perform these in a separate finalized step (or do them here). For webhook/client-verify
+      // we generally finalize the order:
+      const order = await tx.order.findUnique({
+        where: { id: internalOrderId },
+        include: { items: true },
+      });
+
+      if (order) {
+        // reduce stock
+        for (const item of order.items) {
+          await tx.productSize.updateMany({
+            where: {
+              productId: item.productId,
+              size: item.size ?? undefined,
+            },
+            data: { quantity: { decrement: item.quantity } },
+          });
+        }
+
+        // clear cart
+        await tx.cart.update({
+          where: { userId: order.userId },
+          data: { items: { deleteMany: {} } },
+        });
+      }
+
+      return { success: true, paymentId: payment.id };
+    });
   }
 
   /**
-   * Webhook verification helper — verify using webhook secret and return boolean
+   * Called by webhook when Razorpay notifies us of a captured payment.
+   * We already validated webhook signature at controller level so we just reconcile.
+   */
+  async reconcileCapturedPayment({
+    orderId,
+    razorpay_order_id,
+    razorpay_payment_id,
+  }: {
+    orderId: string;
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+  }) {
+    // This is similar to verifyPayment but without signature verification.
+    return await this.prisma.$transaction(async (tx) => {
+      // find existing Payment by razorpayOrderId or orderId
+      let payment = await tx.payment.findFirst({
+        where: { razorpayOrderId: razorpay_order_id },
+      });
+
+      // If not found, create a payment row referencing the internal order & rp ids
+      if (!payment) {
+        const dbOrder = await tx.order.findUnique({
+          where: { id: orderId },
+          select: { userId: true },
+        });
+        if (!dbOrder) {
+          throw new BadRequestException('Internal order not found');
+        }
+
+        payment = await tx.payment.create({
+          data: {
+            userId: dbOrder.userId,
+            orderId,
+            razorpayOrderId: razorpay_order_id,
+            razorpayPaymentId: razorpay_payment_id,
+            amount: 0, // optional
+            currency: 'INR',
+            status: 'PAID',
+          },
+        });
+      } else {
+        // update existing
+        payment = await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            razorpayPaymentId: razorpay_payment_id,
+            status: 'PAID',
+          },
+        });
+      }
+
+      // update order to mark paid and set latestPaymentId to our payment.id
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          latestPaymentId: payment.id,
+          paymentStatus: 'PAID',
+          status: 'PROCESSING',
+        },
+      });
+
+      // reduce stock + clear cart (same as above)
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+
+      if (order) {
+        for (const item of order.items) {
+          await tx.productSize.updateMany({
+            where: {
+              productId: item.productId,
+              size: item.size ?? undefined,
+            },
+            data: { quantity: { decrement: item.quantity } },
+          });
+        }
+        await tx.cart.update({
+          where: { userId: order.userId },
+          data: { items: { deleteMany: {} } },
+        });
+      }
+
+      return { success: true, paymentId: payment.id };
+    });
+  }
+
+  /**
+   * Webhook signature helper
    */
   verifyWebhookSignature(
     rawBody: Buffer,
     signature: string,
     webhookSecret: string,
   ) {
-    // const crypto = require('crypto');
     const expected = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawBody)
+      .digest('hex');
+    return expected === signature;
+  }
+
+  /**
+   * Low-level signature helper (if you use provider)
+   * Not required if you implemented above logic directly.
+   */
+  verifyRpSignature(
+    razorpay_order_id: string,
+    razorpay_payment_id: string,
+    signature: string,
+  ) {
+    const expected = crypto
+      .createHmac('sha256', this.keySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
     return expected === signature;
   }

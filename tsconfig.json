@@ -18,7 +18,13 @@
     "strict": true,
     "resolveJsonModule": true,
     "types": [
-      "node"
-    ] // 👈 only include node types
-  }
+      "node",
+      // "express",
+      "jest"
+    ],
+  },
+  // "include": [
+  //   "src/**/*.ts",
+  //   "types/**/*.d.ts"
+  // ],
 }
