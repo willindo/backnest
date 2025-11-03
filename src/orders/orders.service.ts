@@ -6,6 +6,7 @@ import {
 import { PrismaService } from 'prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Size } from '@prisma/client';
+import { number } from 'zod';
 
 @Injectable()
 export class OrdersService {
@@ -127,5 +128,43 @@ export class OrdersService {
       include: { user: true, items: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getTrial() {
+    const totalOrders = await this.prisma.order.count();
+    const totalRevenueAgg = await this.prisma.order.aggregate({
+      _sum: { totalAmount: true },
+    });
+    const totalRevenue = totalRevenueAgg._sum.totalAmount || 0;
+
+    const ordersByDate = await this.prisma.order.groupBy({
+      by: ['createdAt'],
+      _count: { id: true },
+      _sum: { totalAmount: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      totalOrders,
+      totalRevenue,
+      ordersByDate: ordersByDate.map((entry) => ({
+        date: entry.createdAt,
+        orderCount: entry._count.id,
+        revenue: entry._sum.totalAmount || 0,
+      })),
+    };
+  }
+  async overView() {
+    const orders = await this.prisma.order.findMany({
+      select: { createdAt: true, totalAmount: true, paymentStatus: true },
+    });
+
+    const stats = {} as Record<string, number>;
+    for (const o of orders) {
+      const date = o.createdAt.toISOString().slice(0, 10);
+      stats[date] = (stats[date] || 0) + Number(o.totalAmount);
+    }
+
+    return Object.entries(stats).map(([date, total]) => ({ date, total }));
   }
 }

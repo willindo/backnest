@@ -165,7 +165,7 @@ export class PaymentsService {
 
         // clear cart
         await tx.cart.update({
-          where: { userId: order.userId },
+          where: { userId: order.userId! },
           data: { items: { deleteMany: {} } },
         });
       }
@@ -253,7 +253,7 @@ export class PaymentsService {
           });
         }
         await tx.cart.update({
-          where: { userId: order.userId },
+          where: { userId: order.userId! },
           data: { items: { deleteMany: {} } },
         });
       }

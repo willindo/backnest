@@ -6,11 +6,14 @@ export declare class UsersService {
     constructor(prisma: PrismaService);
     findAll(page?: number, limit?: number, role?: 'ADMIN' | 'CUSTOMER'): Promise<{
         data: {
-            name: string | null;
             id: string;
             email: string;
             phone: string | null;
+            verificationToken: string | null;
+            name: string | null;
             role: import(".prisma/client").$Enums.Role;
+            isVerified: boolean;
+            verificationExpiry: Date | null;
             createdAt: Date;
             updatedAt: Date;
         }[];
@@ -19,38 +22,50 @@ export declare class UsersService {
         limit: number;
     }>;
     findOne(id: string): Promise<{
-        name: string | null;
         id: string;
         email: string;
         phone: string | null;
+        verificationToken: string | null;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        isVerified: boolean;
+        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
     create(dto: CreateUserDto): Promise<{
-        name: string | null;
         id: string;
         email: string;
         phone: string | null;
+        verificationToken: string | null;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        isVerified: boolean;
+        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
     update(id: string, dto: UpdateUserDto): Promise<{
-        name: string | null;
         id: string;
         email: string;
         phone: string | null;
+        verificationToken: string | null;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        isVerified: boolean;
+        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
     remove(id: string): Promise<{
-        name: string | null;
         id: string;
         email: string;
         phone: string | null;
+        verificationToken: string | null;
+        name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        isVerified: boolean;
+        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;

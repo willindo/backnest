@@ -23,6 +23,12 @@ let OrdersController = class OrdersController {
     async findAll(userId) {
         return this.ordersService.getUserOrders(userId);
     }
+    async checkPurpose() {
+        return this.ordersService.getAllOrders();
+    }
+    async getOverview() {
+        return this.ordersService.overView();
+    }
     async findOne(id, userId) {
         return this.ordersService.getOrderByIdWithOwnership(id, userId);
     }
@@ -41,6 +47,18 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], OrdersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('admin'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "checkPurpose", null);
+__decorate([
+    (0, common_1.Get)('overview'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getOverview", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

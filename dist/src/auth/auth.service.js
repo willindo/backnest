@@ -58,10 +58,13 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const bcrypt = __importStar(require("bcrypt"));
+const mailer_service_1 = require("../common/mailer/mailer.service");
+const crypto_1 = require("crypto");
 let AuthService = class AuthService {
-    constructor(prisma, jwt) {
+    constructor(prisma, jwt, mailer) {
         this.prisma = prisma;
         this.jwt = jwt;
+        this.mailer = mailer;
     }
     async validateUser(email, password) {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -70,6 +73,9 @@ let AuthService = class AuthService {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid)
             throw new common_1.UnauthorizedException('Invalid credentials');
+        if (!user.isVerified) {
+            throw new common_1.ForbiddenException('Please verify your email before logging in.');
+        }
         return user;
     }
     async register(dto) {
@@ -79,18 +85,23 @@ let AuthService = class AuthService {
         if (existing)
             throw new common_1.BadRequestException('Email already in use');
         const hash = await bcrypt.hash(dto.password, 10);
+        const token = (0, crypto_1.randomBytes)(32).toString('hex');
+        const expiry = new Date(Date.now() + 15 * 60 * 1000);
         const user = await this.prisma.user.create({
             data: {
                 email: dto.email,
                 password: hash,
                 name: dto.name,
+                isVerified: false,
+                verificationToken: token,
+                verificationExpiry: expiry,
             },
         });
+        await this.mailer.sendVerificationEmail(user.email, token);
         return user;
     }
     async login(user, res) {
         const payload = { sub: user.id, email: user.email };
-        const isProd = process.env.NODE_ENV === 'production';
         const signOptions = {
             secret: process.env.JWT_SECRET || 'supersecret',
         };
@@ -103,12 +114,8 @@ let AuthService = class AuthService {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         };
         res.cookie('auth_token', token, cookieOptions);
-        const { password } = user, safeUser = __rest(user, ["password"]);
-        return {
-            message: 'Login successful',
-            token,
-            user: safeUser,
-        };
+        const { password, verificationToken, verificationExpiry } = user, safeUser = __rest(user, ["password", "verificationToken", "verificationExpiry"]);
+        return { message: 'Login successful', token, user: safeUser };
     }
     async logout(res) {
         res.clearCookie('auth_token', {
@@ -124,6 +131,7 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        mailer_service_1.MailerService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

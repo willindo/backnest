@@ -98,3 +98,19 @@ polls status for a short period,
 tracks analytics event once,
 
 copies order id to clipboard.
+
+============================
+| Operation                           | Effect on Stock                 | Action                                                        |
+| ----------------------------------- | ------------------------------- | ------------------------------------------------------------- |
+| **Create Product**                  | Compute from `sizes[].quantity` | Auto-sum → save to `product.stock`                            |
+| **Order Paid / Checkout Finalized** | Decrease stock                  | Decrement both `productSize.quantity` and total product stock |
+| **Order Cancelled / Refunded**      | Increase stock                  | Increment both                                                |
+| **Damage or Removal**               | Decrease stock                  | Decrement both                                                |
+| **Manual “show stock” only**        | Allowed                         | Just query, no mutation                                       |
+
+| Flow Stage             | Authenticated User                  | Guest User                                     |
+| ---------------------- | ----------------------------------- | ---------------------------------------------- |
+| Frontend user info     | from `Auth.js` session              | from checkout form fields                      |
+| Backend order creation | uses `req.user.id`                  | stores `guestName`, `guestEmail`, `guestPhone` |
+| Razorpay prefill       | from session                        | from checkout form                             |
+| Payment verification   | same for both (by internal orderId) | same for both                                  |

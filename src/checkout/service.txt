@@ -5,14 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
-import {
-  Coupon,
-  GiftCard,
-  OrderStatus,
-  PaymentStatus,
-  Size,
-  Prisma,
-} from '@prisma/client';
+import { Coupon, GiftCard, OrderStatus, PaymentStatus } from '@prisma/client';
 import { validateStock } from './utils/stock-validator';
 import { calculateTotal } from './utils/checkout-calculator';
 import { CheckoutBody, CheckoutBodySchema } from './dto/checkout.dto';
@@ -20,11 +13,7 @@ import { CheckoutBody, CheckoutBodySchema } from './dto/checkout.dto';
 @Injectable()
 export class CheckoutsService {
   constructor(private prisma: PrismaService) {}
-
-  private async clearCart(
-    userId: string,
-    cl: PrismaService | Prisma.TransactionClient = this.prisma,
-  ) {
+  private async clearCart(userId: string, cl = this.prisma) {
     return cl.cart.update({
       where: { userId },
       data: { items: { deleteMany: {} } },
@@ -35,10 +24,12 @@ export class CheckoutsService {
    * STEP 1 — Start Checkout
    * Validates cart, applies discounts, and creates an order draft.
    */
-  async startCheckout(userId: string | null, body: CheckoutBody) {
+  async startCheckout(userId: string, body: CheckoutBody) {
+    // ✅ Validate request body via Zod schema
     const parsed = CheckoutBodySchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException(parsed.error);
-
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error);
+    }
     const {
       cartId,
       addressId,
@@ -46,42 +37,40 @@ export class CheckoutsService {
       paymentMethod,
       couponCode,
       giftCardCode,
-      guestName,
-      guestEmail,
-      guestPhone,
     } = parsed.data;
 
-    // ✅ Fetch cart only if userId exists
-    let cart = null;
-    if (userId) {
-      cart = await this.prisma.cart.findUnique({
-        where: { userId },
-        include: {
-          items: { include: { product: { include: { sizes: true } } } },
+    // ✅ Fetch user's cart
+    const cart = await this.prisma.cart.findUnique({
+      where: { userId },
+      include: {
+        items: {
+          include: { product: { include: { sizes: true } } },
         },
-      });
+      },
+    });
+
+    if (!cart || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty');
     }
 
-    // ✅ Guest path fallback (frontend sends items directly for guest checkout)
-    const items = cart?.items ?? body['items'] ?? [];
+    // ✅ Validate stock
+    validateStock(cart.items);
 
-    if (!items || items.length === 0) {
-      throw new BadRequestException('No items found for checkout');
-    }
+    // ✅ Calculate totals
+    const subtotal = calculateTotal(cart.items);
 
-    validateStock(items);
-    const subtotal = calculateTotal(items);
-
-    // ✅ Handle discounts
+    // ✅ Initialize discounts
     let discountAmount = 0;
     let appliedCoupon: Coupon | null = null;
     let appliedGiftCard: GiftCard | null = null;
 
-    if (couponCode && userId) {
+    // --- Coupon logic ---
+    if (couponCode) {
       appliedCoupon = await this.validateCoupon(userId, couponCode, subtotal);
       discountAmount += this.calculateCouponDiscount(appliedCoupon, subtotal);
     }
 
+    // --- Gift Card logic ---
     if (giftCardCode) {
       appliedGiftCard = await this.validateGiftCard(giftCardCode);
       const usableAmount = Math.min(
@@ -93,35 +82,32 @@ export class CheckoutsService {
 
     const finalAmount = Math.max(0, subtotal - discountAmount);
 
-    // ✅ Handle address
+    // ✅ Address handling
     let finalAddressId = addressId ?? null;
+
     if (!finalAddressId && address) {
       const newAddress = await this.prisma.address.create({
         data: {
-          userId: userId ?? null,
+          userId,
           line1: address.line1,
           line2: address.line2 ?? null,
           city: address.city,
           state: address.state,
           postalCode: address.postalCode,
-          country: address.country ?? 'India',
+          country: address.country ?? 'India', // 👈 ensure always string
         },
       });
       finalAddressId = newAddress.id;
     }
 
-    // ✅ Define type-safe payload type
-    type OrderWithAddress = Prisma.OrderGetPayload<{
-      include: { address: true; items: true };
-    }>;
+    if (!finalAddressId) {
+      throw new BadRequestException('Shipping address is required');
+    }
 
-    // ✅ Create Order (guest + registered)
-    const order: OrderWithAddress = await this.prisma.order.create({
+    // ✅ Create pending order
+    const order = await this.prisma.order.create({
       data: {
-        userId: userId ?? undefined,
-        guestName: userId ? null : (guestName ?? 'Guest'),
-        guestEmail: userId ? null : (guestEmail ?? null),
-        guestPhone: userId ? null : (guestPhone ?? null),
+        userId,
         addressId: finalAddressId,
         totalAmount: new Decimal(finalAmount),
         discountAmount: new Decimal(discountAmount),
@@ -130,19 +116,16 @@ export class CheckoutsService {
         status: OrderStatus.PENDING,
         paymentStatus: PaymentStatus.PENDING,
         items: {
-          create: items.map((item) => ({
+          create: cart.items.map((item) => ({
+            productId: item.productId,
             quantity: item.quantity,
-            priceAtPurchase: new Decimal(item.productPrice ?? 0),
-            size: item.size ? (item.size as Size) : null, // ✅ Enum-safe
-            product: { connect: { id: item.productId } },
+            priceAtPurchase: item.productPrice ?? item.product.price,
+            size: item.size,
           })),
         },
       },
       include: { items: true, address: true },
     });
-
-    // ✅ Clear cart only for logged-in users
-    if (userId) await this.clearCart(userId);
 
     return {
       message: 'Checkout initiated successfully',
@@ -215,10 +198,12 @@ export class CheckoutsService {
         });
       }
 
-      // ✅ Clear cart (only if user has one)
-      if (order.userId) {
-        await this.clearCart(order.userId, tx);
-      }
+      // ✅ Empty cart
+      await this.clearCart(order.userId);
+      // await tx.cart.update({
+      //   where: { userId },
+      //   data: { items: { deleteMany: {} } },
+      // });
 
       return {
         message: 'Payment confirmed & order finalized successfully',

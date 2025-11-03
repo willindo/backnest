@@ -12,7 +12,15 @@ export class OrdersController {
   async findAll(@GetUser('id') userId: string) {
     return this.ordersService.getUserOrders(userId);
   }
+  @Get('admin')
+  async checkPurpose() {
+    return this.ordersService.getAllOrders();
+  }
 
+  @Get('overview')
+  async getOverview() {
+    return this.ordersService.overView();
+  }
   // ✅ Get a single order (ownership-checked)
   @Get(':id')
   async findOne(@Param('id') id: string, @GetUser('id') userId: string) {

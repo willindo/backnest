@@ -11,12 +11,34 @@ export const AddressInputSchema = z.object({
 
 export const CheckoutBodySchema = z.object({
   cartId: z.string().optional(),
-  addressId: z.string().uuid().nullable().optional(),
+  addressId: z.string().optional(),
   address: AddressInputSchema.optional(),
-  paymentMethod: z.string().default('razorpay').optional(),
+  paymentMethod: z.string(),
   couponCode: z.string().optional(),
   giftCardCode: z.string().optional(),
+  // 👇 New guest info
+  guestName: z.string().optional(),
+  guestEmail: z.string().email().optional(),
+  guestPhone: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        productId: z.string(),
+        quantity: z.number().positive(),
+        size: z.string().optional(),
+        productPrice: z.number().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type AddressInput = z.infer<typeof AddressInputSchema>;
 export type CheckoutBody = z.infer<typeof CheckoutBodySchema>;
+// export const CheckoutBodySchema = z.object({
+//   cartId: z.string().optional(),
+//   addressId: z.string().uuid().nullable().optional(),
+//   address: AddressInputSchema.optional(),
+//   paymentMethod: z.string().default('razorpay').optional(),
+//   couponCode: z.string().optional(),
+//   giftCardCode: z.string().optional(),
+// });

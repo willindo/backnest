@@ -6,31 +6,36 @@ generator zod {
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["strictUndefinedChecks"]
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  password     String
-  name         String?
-  phone        String?       @unique
-  role         Role          @default(CUSTOMER)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  addresses    Address[]
-  cart         Cart?
-  orders       Order[]
-  payments     Payment[]
-  wishlists    Wishlist[]
-  reviews      Review[]
-  giftCards    GiftCard[] // user-owned cards
-  couponUsages CouponUsage[] // coupons redeemed
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  password           String
+  name               String?
+  phone              String?       @unique
+  role               Role          @default(CUSTOMER)
+  isVerified         Boolean       @default(false)
+  verificationToken  String?       @unique
+  verificationExpiry DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  addresses          Address[]
+  cart               Cart?
+  orders             Order[]
+  payments           Payment[]
+  wishlists          Wishlist[]
+  reviews            Review[]
+  giftCards          GiftCard[]
+  couponUsages       CouponUsage[]
 }
+
 
 model Address {
   id         String  @id @default(cuid())
@@ -146,11 +151,14 @@ model WishlistItem {
 
 model Order {
   id              String        @id @default(cuid())
-  user            User          @relation(fields: [userId], references: [id])
-  userId          String
+  user            User?         @relation(fields: [userId], references: [id])
+  userId          String?
+  guestName       String?
+  guestEmail      String?
+  guestPhone      String?
   address         Address?      @relation(fields: [addressId], references: [id])
   addressId       String?
-  latestPaymentId String?       @unique // ✅ optional relation helper
+  latestPaymentId String?       @unique
   items           OrderItem[]
   totalAmount     Decimal       @default(0)
   status          OrderStatus   @default(PENDING)
@@ -162,7 +170,7 @@ model Order {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  couponUsages  CouponUsage[] // 👈 Added reverse relation
+  couponUsages  CouponUsage[]
   Payment       Payment[]
   GiftCardUsage GiftCardUsage[]
 }
@@ -182,7 +190,7 @@ model OrderItem {
 
 model Payment {
   id                String        @id @default(cuid())
-  userId            String
+  userId            String?
   orderId           String?
   signature         String?
   amount            Decimal
@@ -191,7 +199,7 @@ model Payment {
   razorpayOrderId   String?       @unique
   razorpayPaymentId String?
   status            PaymentStatus @default(PENDING)
-  user              User          @relation(fields: [userId], references: [id])
+  user              User?         @relation(fields: [userId], references: [id])
   order             Order?        @relation(fields: [orderId], references: [id])
 }
 

@@ -14,67 +14,74 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
-const auth_service_1 = require("./auth.service");
+const prisma_service_1 = require("../../prisma/prisma.service");
 const public_decorator_1 = require("./decorators/public.decorator");
-const login_dto_1 = require("./dto/login.dto");
-const register_dto_1 = require("./dto/register.dto");
+const auth_service_1 = require("./auth.service");
+const mailer_service_1 = require("../common/mailer/mailer.service");
+const crypto_1 = require("crypto");
 let AuthController = class AuthController {
-    constructor(auth) {
+    constructor(auth, prisma, mailerService) {
         this.auth = auth;
+        this.prisma = prisma;
+        this.mailerService = mailerService;
     }
-    async register(dto, res) {
-        const user = await this.auth.register(dto);
-        return this.auth.login(user, res);
-    }
-    async login(dto, res) {
-        const user = await this.auth.validateUser(dto.email, dto.password);
-        return this.auth.login(user, res);
-    }
-    async logout(res) {
-        return this.auth.logout(res);
-    }
-    async me(req) {
-        const user = req.user;
+    async verifyEmail(token) {
+        if (!token)
+            throw new common_1.BadRequestException('Token missing');
+        const user = await this.prisma.user.findUnique({
+            where: { verificationToken: token },
+        });
         if (!user)
-            throw new common_1.UnauthorizedException('Not authenticated');
-        return { user };
+            throw new common_1.BadRequestException('Invalid or expired token');
+        if (user.verificationExpiry && user.verificationExpiry < new Date()) {
+            throw new common_1.BadRequestException('Token expired');
+        }
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                isVerified: true,
+                verificationToken: null,
+                verificationExpiry: null,
+            },
+        });
+        return { message: 'Email verified successfully. You may now log in.' };
+    }
+    async resendVerification(email) {
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (!user)
+            throw new common_1.BadRequestException('No account found with that email');
+        if (user.isVerified)
+            throw new common_1.BadRequestException('Email is already verified');
+        const token = (0, crypto_1.randomBytes)(32).toString('hex');
+        const expiry = new Date(Date.now() + 15 * 60 * 1000);
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { verificationToken: token, verificationExpiry: expiry },
+        });
+        await this.mailerService.sendVerificationEmail(user.email, token);
+        return { message: 'Verification email resent. Please check your inbox.' };
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, public_decorator_1.Public)(),
-    (0, common_1.Post)('register'),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Res)({ passthrough: true })),
+    (0, common_1.Get)('verify-email'),
+    __param(0, (0, common_1.Query)('token')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [register_dto_1.RegisterDto, Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
-], AuthController.prototype, "register", null);
+], AuthController.prototype, "verifyEmail", null);
 __decorate([
-    (0, public_decorator_1.Public)(),
-    (0, common_1.Post)('login'),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Res)({ passthrough: true })),
+    (0, common_1.Post)('resend-verification'),
+    __param(0, (0, common_1.Body)('email')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
-], AuthController.prototype, "login", null);
-__decorate([
-    (0, common_1.Post)('logout'),
-    __param(0, (0, common_1.Res)({ passthrough: true })),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "logout", null);
-__decorate([
-    (0, common_1.Get)('me'),
-    __param(0, (0, common_1.Req)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "me", null);
+], AuthController.prototype, "resendVerification", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
-    __metadata("design:paramtypes", [auth_service_1.AuthService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService,
+        prisma_service_1.PrismaService,
+        mailer_service_1.MailerService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

@@ -26,6 +26,21 @@ export class ProductsService {
     }));
   }
 
+  async recalculateProductStock(productId: string, tx = this.prisma) {
+    const total = await tx.productSize.aggregate({
+      where: { productId },
+      _sum: { quantity: true },
+    });
+
+    const totalStock = total._sum.quantity ?? 0;
+    await tx.product.update({
+      where: { id: productId },
+      data: { stock: totalStock },
+    });
+
+    return totalStock;
+  }
+
   async generateUniqueSlug(name: string): Promise<string> {
     function slugify(name: string): string {
       return name
@@ -49,15 +64,15 @@ export class ProductsService {
 
     if (dto.price < 0)
       throw new BadRequestException('Price cannot be negative');
-    if (dto.stock && dto.stock < 0)
-      throw new BadRequestException('Stock cannot be negative');
 
+    const totalStock =
+      sizes?.reduce((acc, s) => acc + (s.quantity ?? 0), 0) ?? 0;
     return this.prisma.product.create({
       data: {
         ...rest,
         price: new Prisma.Decimal(dto.price),
         slug: await this.generateUniqueSlug(dto.name),
-        stock: dto.stock ?? 0,
+        stock: totalStock,
         images: dto.images ?? [],
         gender: dto.gender ?? null,
         // ✅ use connect if categoryId provided
@@ -107,9 +122,8 @@ export class ProductsService {
 
     if (rest.price && rest.price < 0)
       throw new BadRequestException('Price cannot be negative');
-    if (rest.stock && rest.stock < 0)
-      throw new BadRequestException('Stock cannot be negative');
 
+    const totalStock = sizes?.reduce((acc, s) => acc + (s.quantity ?? 0), 0);
     try {
       await this.prisma.product.findUniqueOrThrow({ where: { id } });
 
@@ -117,6 +131,7 @@ export class ProductsService {
         where: { id },
         data: {
           ...rest,
+          stock: totalStock ?? undefined,
           gender: rest.gender ?? null,
           sizes: sizes?.length
             ? { upsert: this.buildSizeUpserts(id, sizes) }
