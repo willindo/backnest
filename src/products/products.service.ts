@@ -90,7 +90,7 @@ export class ProductsService {
     });
   }
 
-  // 📦 Get All Products (Paginated + Filtered)
+  // 📦 Get All Products (Paginated + Filtered + Sorted)
   async findAll(
     page = 1,
     limit = 10,
@@ -115,7 +115,7 @@ export class ProductsService {
     const genderValues = Object.values(Gender);
     const sizeValues = Object.values(Size);
 
-    // build where dynamically
+    // 🧱 Build dynamic WHERE clause
     const where: Prisma.ProductWhereInput = {
       ...(categoriesArr.length && {
         category: {
@@ -141,8 +141,9 @@ export class ProductsService {
         },
       }),
     };
+
     // 🧭 Sorting Logic
-    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' };
+    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' }; // default
 
     switch (sort) {
       case 'price-asc':
@@ -159,6 +160,7 @@ export class ProductsService {
         break;
     }
 
+    // 🧮 Total count + paginated query
     const total = await this.prisma.product.count({ where });
     const totalPages = Math.ceil(total / limit);
 

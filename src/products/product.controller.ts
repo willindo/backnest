@@ -41,7 +41,7 @@ export class ProductsController {
     @Query('categories') categories?: string[] | string,
     @Query('genders') genders?: string[] | string,
     @Query('sizes') sizes?: string[] | string,
-    @Query('sort') sort?: string, // 👈 added
+    @Query('sort') sort?: string, // ✅ added
   ) {
     return this.productsService.findAll(page, limit, {
       categories,
