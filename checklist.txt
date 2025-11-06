@@ -114,3 +114,13 @@ copies order id to clipboard.
 | Backend order creation | uses `req.user.id`                  | stores `guestName`, `guestEmail`, `guestPhone` |
 | Razorpay prefill       | from session                        | from checkout form                             |
 | Payment verification   | same for both (by internal orderId) | same for both                                  |
+
+Bonus Improvement (Optional but Nice)
+
+In the future, if you want /auth/me to auto-refresh token when nearing expiry, I can help you add a small token-refresh mechanism that:
+
+issues a new token if < 1 hour remains,
+
+keeps sessions alive smoothly.
+
+Would you like that added next (simple and cookie-based, no refresh table)?

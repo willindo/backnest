@@ -20,15 +20,15 @@ export class UsersService {
     role?: 'ADMIN' | 'CUSTOMER', // now matches mapped type
   ) {
     const skip = (page - 1) * limit;
-
+    const whereClause = role ? { role } : {};
     const [data, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
-        where: role ? { role } : undefined,
+        where: { ...whereClause },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.user.count({ where: role ? { role } : undefined }),
+      this.prisma.user.count({ where: { ...whereClause } }),
     ]);
 
     const users = data.map(({ password, ...rest }) => rest);

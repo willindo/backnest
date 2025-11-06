@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { RazorpayProvider } from './providers/razorpay.provider';
 import * as crypto from 'crypto';
+import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
 export class PaymentsService {
@@ -161,6 +162,10 @@ export class PaymentsService {
             },
             data: { quantity: { decrement: item.quantity } },
           });
+          // await this.productsService.recalculateProductStock(
+          //   item.productId,
+          //   tx,
+          // );
         }
 
         // clear cart

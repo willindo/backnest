@@ -33,14 +33,22 @@ export class ProductsController {
     return this.productsService.create(dto);
   }
 
-  // 🟢 Public paginated fetch
   @Public()
   @Get()
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('categories') categories?: string[] | string,
+    @Query('genders') genders?: string[] | string,
+    @Query('sizes') sizes?: string[] | string,
+    @Query('sort') sort?: string, // 👈 added
   ) {
-    return this.productsService.findAll(page, limit);
+    return this.productsService.findAll(page, limit, {
+      categories,
+      genders,
+      sizes,
+      sort,
+    });
   }
 
   // 🟢 Public single fetch

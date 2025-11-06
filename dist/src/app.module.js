@@ -23,6 +23,7 @@ const core_1 = require("@nestjs/core");
 const jwt_guard_1 = require("./auth/guards/jwt.guard");
 const roles_guard_1 = require("./auth/guards/roles.guard");
 const jwt_1 = require("@nestjs/jwt");
+const filters_module_1 = require("./filters/filters.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -42,6 +43,7 @@ exports.AppModule = AppModule = __decorate([
             checkout_module_1.CheckoutModule,
             orders_module_1.OrdersModule,
             payments_module_1.PaymentsModule,
+            filters_module_1.FiltersModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

@@ -1,11 +1,25 @@
-import { PrismaService } from 'prisma/prisma.service';
+import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
-import { MailerService } from 'src/common/mailer/mailer.service';
+import { RegisterDto, LoginDto } from './dto';
 export declare class AuthController {
     private readonly auth;
-    private readonly prisma;
-    private readonly mailerService;
-    constructor(auth: AuthService, prisma: PrismaService, mailerService: MailerService);
+    constructor(auth: AuthService);
+    register(dto: RegisterDto, res: Response): Promise<{
+        message: string;
+        token: string;
+        user: any;
+    }>;
+    login(dto: LoginDto, res: Response): Promise<{
+        message: string;
+        token: string;
+        user: any;
+    }>;
+    getMe(req: Request): Promise<{
+        user: any;
+    }>;
+    logout(res: Response): Promise<{
+        message: string;
+    }>;
     verifyEmail(token: string): Promise<{
         message: string;
     }>;

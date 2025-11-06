@@ -66,41 +66,40 @@ let AuthService = class AuthService {
         this.jwt = jwt;
         this.mailer = mailer;
     }
-    async validateUser(email, password) {
-        const user = await this.prisma.user.findUnique({ where: { email } });
-        if (!user)
-            throw new common_1.UnauthorizedException('Invalid credentials');
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid)
-            throw new common_1.UnauthorizedException('Invalid credentials');
-        if (!user.isVerified) {
-            throw new common_1.ForbiddenException('Please verify your email before logging in.');
-        }
-        return user;
-    }
-    async register(dto) {
+    async register(dto, res) {
         const existing = await this.prisma.user.findUnique({
             where: { email: dto.email },
         });
         if (existing)
             throw new common_1.BadRequestException('Email already in use');
-        const hash = await bcrypt.hash(dto.password, 10);
+        const hashed = await bcrypt.hash(dto.password, 10);
         const token = (0, crypto_1.randomBytes)(32).toString('hex');
         const expiry = new Date(Date.now() + 15 * 60 * 1000);
         const user = await this.prisma.user.create({
             data: {
-                email: dto.email,
-                password: hash,
+                email: dto.email.toLowerCase(),
+                password: hashed,
                 name: dto.name,
                 isVerified: false,
                 verificationToken: token,
                 verificationExpiry: expiry,
             },
         });
-        await this.mailer.sendVerificationEmail(user.email, token);
+        this.mailer.sendVerificationEmail(user.email, token).catch(console.error);
+        return this.login(user, res, { skipVerifyCheck: true });
+    }
+    async validateUser(email, password) {
+        const user = await this.prisma.user.findUnique({
+            where: { email: email.toLowerCase() },
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid)
+            throw new common_1.UnauthorizedException('Invalid credentials');
         return user;
     }
-    async login(user, res) {
+    async login(user, res, opts) {
         const payload = { sub: user.id, email: user.email };
         const signOptions = {
             secret: process.env.JWT_SECRET || 'supersecret',
@@ -115,7 +114,47 @@ let AuthService = class AuthService {
         };
         res.cookie('auth_token', token, cookieOptions);
         const { password, verificationToken, verificationExpiry } = user, safeUser = __rest(user, ["password", "verificationToken", "verificationExpiry"]);
-        return { message: 'Login successful', token, user: safeUser };
+        return {
+            message: 'Login successful',
+            token,
+            user: Object.assign(Object.assign({}, safeUser), { needsVerification: !user.isVerified }),
+        };
+    }
+    async verifyEmail(token) {
+        const user = await this.prisma.user.findUnique({
+            where: { verificationToken: token },
+        });
+        if (!user)
+            throw new common_1.BadRequestException('Invalid or expired token');
+        if (user.verificationExpiry && user.verificationExpiry < new Date()) {
+            throw new common_1.BadRequestException('Verification token expired');
+        }
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                isVerified: true,
+                verificationToken: null,
+                verificationExpiry: null,
+            },
+        });
+        return { message: 'Email verified successfully. You may now log in.' };
+    }
+    async resendVerification(email) {
+        const user = await this.prisma.user.findUnique({
+            where: { email: email.toLowerCase() },
+        });
+        if (!user)
+            throw new common_1.BadRequestException('No account found with that email');
+        if (user.isVerified)
+            throw new common_1.BadRequestException('Email already verified');
+        const token = (0, crypto_1.randomBytes)(32).toString('hex');
+        const expiry = new Date(Date.now() + 15 * 60 * 1000);
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { verificationToken: token, verificationExpiry: expiry },
+        });
+        await this.mailer.sendVerificationEmail(user.email, token);
+        return { message: 'Verification email resent. Please check your inbox.' };
     }
     async logout(res) {
         res.clearCookie('auth_token', {

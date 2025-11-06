@@ -64,14 +64,15 @@ let UsersService = class UsersService {
     }
     async findAll(page = 1, limit = 20, role) {
         const skip = (page - 1) * limit;
+        const whereClause = role ? { role } : {};
         const [data, total] = await this.prisma.$transaction([
             this.prisma.user.findMany({
-                where: role ? { role } : undefined,
+                where: Object.assign({}, whereClause),
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
             }),
-            this.prisma.user.count({ where: role ? { role } : undefined }),
+            this.prisma.user.count({ where: Object.assign({}, whereClause) }),
         ]);
         const users = data.map((_a) => {
             var { password } = _a, rest = __rest(_a, ["password"]);

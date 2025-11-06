@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { Prisma, Product, Size } from '@prisma/client';
+import { Prisma, Product, Size, Gender } from '@prisma/client';
 import {
   CreateProductInput,
   UpdateProductInput,
@@ -90,16 +90,84 @@ export class ProductsService {
     });
   }
 
-  // 📦 Get All Products (Paginated)
-  async findAll(page = 1, limit = 10) {
-    const total = await this.prisma.product.count();
+  // 📦 Get All Products (Paginated + Filtered)
+  async findAll(
+    page = 1,
+    limit = 10,
+    filters?: {
+      categories?: string[] | string;
+      genders?: string[] | string;
+      sizes?: string[] | string;
+      sort?: string;
+    },
+  ) {
+    let { categories, genders, sizes, sort } = filters || {};
+
+    // 🧩 Normalize to arrays
+    const toArray = (v?: string[] | string) =>
+      !v ? [] : Array.isArray(v) ? v : v.split(',').map((x) => x.trim());
+
+    const categoriesArr = toArray(categories);
+    const gendersArr = toArray(genders);
+    const sizesArr = toArray(sizes);
+
+    // enum safety
+    const genderValues = Object.values(Gender);
+    const sizeValues = Object.values(Size);
+
+    // build where dynamically
+    const where: Prisma.ProductWhereInput = {
+      ...(categoriesArr.length && {
+        category: {
+          name: { in: categoriesArr },
+        },
+      }),
+      ...(gendersArr.length && {
+        gender: {
+          in: gendersArr.filter((g) =>
+            genderValues.includes(g as Gender),
+          ) as Gender[],
+        },
+      }),
+      ...(sizesArr.length && {
+        sizes: {
+          some: {
+            size: {
+              in: sizesArr.filter((s) =>
+                sizeValues.includes(s as Size),
+              ) as Size[],
+            },
+          },
+        },
+      }),
+    };
+    // 🧭 Sorting Logic
+    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' };
+
+    switch (sort) {
+      case 'price-asc':
+        orderBy = { price: 'asc' };
+        break;
+      case 'price-desc':
+        orderBy = { price: 'desc' };
+        break;
+      case 'oldest':
+        orderBy = { createdAt: 'asc' };
+        break;
+      case 'newest':
+        orderBy = { createdAt: 'desc' };
+        break;
+    }
+
+    const total = await this.prisma.product.count({ where });
     const totalPages = Math.ceil(total / limit);
 
     const data = await this.prisma.product.findMany({
       skip: (page - 1) * limit,
       take: limit,
-      include: { sizes: true },
-      orderBy: { createdAt: 'desc' },
+      include: { sizes: true, category: true },
+      orderBy,
+      where,
     });
 
     return { total, page, limit, totalPages, data };
