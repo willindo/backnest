@@ -9,12 +9,35 @@ import {
   CreateProductInput,
   UpdateProductInput,
 } from './schemas/product.schema';
+import { SearchService } from 'src/search/search.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly searchService: SearchService,
+  ) {}
 
-  // 🧩 Helper for ProductSize upserts
+  // 🔹 Helper: Flatten for Meilisearch
+  private serializeForSearch(product: any) {
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description ?? '',
+      category: product.category?.name ?? null,
+      categoryId: product.categoryId ?? null,
+      gender: product.gender ?? null,
+      sizes: product.sizes?.map((s: any) => s.size) ?? [],
+      price: Number(product.price),
+      stock: product.stock ?? 0,
+      slug: product.slug,
+      images: product.images ?? [],
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+    };
+  }
+
+  // 🔹 Helper: Build ProductSize upserts
   private buildSizeUpserts(
     productId: string,
     sizes: { size: Size; quantity: number }[],
@@ -26,39 +49,37 @@ export class ProductsService {
     }));
   }
 
+  // 🔹 Auto recalc total stock
   async recalculateProductStock(productId: string, tx = this.prisma) {
     const total = await tx.productSize.aggregate({
       where: { productId },
       _sum: { quantity: true },
     });
-
     const totalStock = total._sum.quantity ?? 0;
     await tx.product.update({
       where: { id: productId },
       data: { stock: totalStock },
     });
-
     return totalStock;
   }
 
+  // 🔹 Generate unique slug
   async generateUniqueSlug(name: string): Promise<string> {
-    function slugify(name: string): string {
-      return name
+    const slugify = (str: string) =>
+      str
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-') // Replace spaces/special chars with '-'
-        .replace(/^-+|-+$/g, ''); // Trim hyphens
-    }
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
     let base = slugify(name);
     let slug = base;
-    let counter = 1;
-
+    let i = 1;
     while (await this.prisma.product.findUnique({ where: { slug } })) {
-      slug = `${base}-${counter++}`;
+      slug = `${base}-${i++}`;
     }
     return slug;
   }
 
-  // 🏗️ Create Product
+  // 🧱 CREATE
   async create(dto: CreateProductInput): Promise<Product> {
     const { sizes, categoryId, ...rest } = dto;
 
@@ -67,7 +88,8 @@ export class ProductsService {
 
     const totalStock =
       sizes?.reduce((acc, s) => acc + (s.quantity ?? 0), 0) ?? 0;
-    return this.prisma.product.create({
+
+    const product = await this.prisma.product.create({
       data: {
         ...rest,
         price: new Prisma.Decimal(dto.price),
@@ -75,23 +97,30 @@ export class ProductsService {
         stock: totalStock,
         images: dto.images ?? [],
         gender: dto.gender ?? null,
-        // ✅ use connect if categoryId provided
-        category: categoryId ? { connect: { id: categoryId } } : undefined,
-        sizes: sizes?.length
-          ? {
-              create: sizes.map((s) => ({
-                size: s.size,
-                quantity: s.quantity ?? 0,
-              })),
-            }
-          : undefined,
+        ...(categoryId && { category: { connect: { id: categoryId } } }),
+        ...(sizes?.length && {
+          sizes: {
+            create: sizes.map((s) => ({
+              size: s.size,
+              quantity: s.quantity ?? 0,
+            })),
+          },
+        }),
       },
-      include: { sizes: true },
+      include: { sizes: true, category: true },
     });
+
+    // ✅ Add to Meilisearch
+    await this.searchService
+      .addProduct(product.id)
+      .catch((e) => console.error('Meilisearch addProduct failed:', e.message));
+
+    return product;
   }
 
-  // 📦 Get All Products (Paginated + Filtered + Sorted)
+  // 📦 GET ALL
   async findAll(
+    search?: string,
     page = 1,
     limit = 10,
     filters?: {
@@ -101,50 +130,70 @@ export class ProductsService {
       sort?: string;
     },
   ) {
-    let { categories, genders, sizes, sort } = filters || {};
+    const { categories, genders, sizes, sort } = filters || {};
 
-    // 🧩 Normalize to arrays
-    const toArray = (v?: string[] | string) =>
-      !v ? [] : Array.isArray(v) ? v : v.split(',').map((x) => x.trim());
+    // 🔍 Search via Meilisearch
+    if (search && search.trim()) {
+      const index = (this.searchService as any).index; // direct index access
 
-    const categoriesArr = toArray(categories);
-    const gendersArr = toArray(genders);
-    const sizesArr = toArray(sizes);
+      const buildFilter = () => {
+        const parts: string[] = [];
+        const toArr = (v?: string[] | string) =>
+          !v ? [] : Array.isArray(v) ? v : [v];
 
-    // enum safety
-    const genderValues = Object.values(Gender);
-    const sizeValues = Object.values(Size);
+        const cats = toArr(categories);
+        const gens = toArr(genders);
+        const sizs = toArr(sizes);
 
-    // 🧱 Build dynamic WHERE clause
+        if (cats.length)
+          parts.push(`category IN [${cats.map((v) => `"${v}"`).join(', ')}]`);
+        if (gens.length)
+          parts.push(`gender IN [${gens.map((v) => `"${v}"`).join(', ')}]`);
+        if (sizs.length)
+          parts.push(`sizes IN [${sizs.map((v) => `"${v}"`).join(', ')}]`);
+
+        return parts.length ? parts.join(' AND ') : undefined;
+      };
+
+      const res = await index.search(search, {
+        limit,
+        offset: (page - 1) * limit,
+        filter: buildFilter(),
+        sort: sort
+          ? [
+              sort === 'price-asc'
+                ? 'price:asc'
+                : sort === 'price-desc'
+                  ? 'price:desc'
+                  : 'createdAt:desc',
+            ]
+          : undefined,
+      });
+
+      return {
+        total: res.estimatedTotalHits,
+        page,
+        limit,
+        totalPages: Math.ceil(res.estimatedTotalHits / limit),
+        data: res.hits,
+      };
+    }
+
+    // 🧩 Fallback: Prisma
+    const toArr = (v?: string[] | string) =>
+      !v ? [] : Array.isArray(v) ? v : [v];
+
     const where: Prisma.ProductWhereInput = {
-      ...(categoriesArr.length && {
-        category: {
-          name: { in: categoriesArr },
-        },
+      ...(categories && {
+        category: { name: { in: toArr(categories) } },
       }),
-      ...(gendersArr.length && {
-        gender: {
-          in: gendersArr.filter((g) =>
-            genderValues.includes(g as Gender),
-          ) as Gender[],
-        },
-      }),
-      ...(sizesArr.length && {
-        sizes: {
-          some: {
-            size: {
-              in: sizesArr.filter((s) =>
-                sizeValues.includes(s as Size),
-              ) as Size[],
-            },
-          },
-        },
+      ...(genders && { gender: { in: toArr(genders) as Gender[] } }),
+      ...(sizes && {
+        sizes: { some: { size: { in: toArr(sizes) as Size[] } } },
       }),
     };
 
-    // 🧭 Sorting Logic
-    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' }; // default
-
+    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' };
     switch (sort) {
       case 'price-asc':
         orderBy = { price: 'asc' };
@@ -155,15 +204,9 @@ export class ProductsService {
       case 'oldest':
         orderBy = { createdAt: 'asc' };
         break;
-      case 'newest':
-        orderBy = { createdAt: 'desc' };
-        break;
     }
 
-    // 🧮 Total count + paginated query
     const total = await this.prisma.product.count({ where });
-    const totalPages = Math.ceil(total / limit);
-
     const data = await this.prisma.product.findMany({
       skip: (page - 1) * limit,
       take: limit,
@@ -172,66 +215,78 @@ export class ProductsService {
       where,
     });
 
-    return { total, page, limit, totalPages, data };
+    return {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      data,
+    };
   }
 
-  // 🔍 Get One Product
+  // 🔍 FIND ONE
   async findOne(id: string): Promise<Product> {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { sizes: true },
+      include: { sizes: true, category: true },
     });
     if (!product)
       throw new NotFoundException(`Product with ID "${id}" not found`);
     return product;
   }
 
-  // ✏️ Update Product
+  // ✏️ UPDATE
   async update(id: string, dto: UpdateProductInput): Promise<Product> {
     const { sizes, ...rest } = dto;
 
     if (rest.price && rest.price < 0)
       throw new BadRequestException('Price cannot be negative');
 
-    const totalStock = sizes?.reduce((acc, s) => acc + (s.quantity ?? 0), 0);
-    try {
-      await this.prisma.product.findUniqueOrThrow({ where: { id } });
+    const totalStock = sizes?.reduce((a, s) => a + (s.quantity ?? 0), 0);
 
-      return await this.prisma.product.update({
-        where: { id },
-        data: {
-          ...rest,
-          stock: totalStock ?? undefined,
-          gender: rest.gender ?? null,
-          sizes: sizes?.length
-            ? { upsert: this.buildSizeUpserts(id, sizes) }
-            : undefined,
-        },
-        include: { sizes: true },
-      });
-    } catch (err: any) {
-      if (err.code === 'P2025')
-        throw new NotFoundException(`Product with ID "${id}" not found`);
-      console.error(err);
-      throw err;
-    }
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: {
+        ...rest,
+        stock: totalStock ?? undefined,
+        gender: rest.gender ?? null,
+        sizes: sizes?.length
+          ? { upsert: this.buildSizeUpserts(id, sizes) }
+          : undefined,
+      },
+      include: { sizes: true, category: true },
+    });
+
+    await this.searchService
+      .updateProduct(id)
+      .catch((e) =>
+        console.error('Meilisearch updateProduct failed:', e.message),
+      );
+
+    return updated;
   }
 
-  // 🗑️ Delete Product
+  // 🗑️ REMOVE
   async remove(id: string): Promise<Product> {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: { sizes: true },
     });
     if (!product)
-      throw new NotFoundException(
-        `Cannot delete. Product with ID "${id}" not found`,
-      );
+      throw new NotFoundException(`Product with ID "${id}" not found`);
 
     await this.prisma.productSize.deleteMany({ where: { productId: id } });
-    return this.prisma.product.delete({
+    const deleted = await this.prisma.product.delete({
       where: { id },
       include: { sizes: true },
     });
+
+    await this.searchService
+      .removeProduct(id)
+      .catch((e) =>
+        console.error('Meilisearch removeProduct failed:', e.message),
+      );
+
+    return deleted;
   }
 }

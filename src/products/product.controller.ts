@@ -11,6 +11,7 @@ import {
   Query,
   UseGuards,
   ParseIntPipe,
+  Search,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -38,12 +39,13 @@ export class ProductsController {
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('search') Search?: string,
     @Query('categories') categories?: string[] | string,
     @Query('genders') genders?: string[] | string,
     @Query('sizes') sizes?: string[] | string,
     @Query('sort') sort?: string, // ✅ added
   ) {
-    return this.productsService.findAll(page, limit, {
+    return this.productsService.findAll(Search, page, limit, {
       categories,
       genders,
       sizes,

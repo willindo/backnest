@@ -30,10 +30,10 @@ export declare class OrdersController {
             };
         } & {
             id: string;
-            productId: string;
-            quantity: number;
-            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             size: import(".prisma/client").$Enums.Size | null;
+            quantity: number;
+            productId: string;
+            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             orderId: string;
         })[];
     } & {
@@ -70,10 +70,10 @@ export declare class OrdersController {
         } | null;
         items: {
             id: string;
-            productId: string;
-            quantity: number;
-            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             size: import(".prisma/client").$Enums.Size | null;
+            quantity: number;
+            productId: string;
+            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             orderId: string;
         }[];
     } & {
@@ -125,10 +125,10 @@ export declare class OrdersController {
             };
         } & {
             id: string;
-            productId: string;
-            quantity: number;
-            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             size: import(".prisma/client").$Enums.Size | null;
+            quantity: number;
+            productId: string;
+            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             orderId: string;
         })[];
     } & {
@@ -167,10 +167,10 @@ export declare class OrdersController {
             };
         } & {
             id: string;
-            productId: string;
-            quantity: number;
-            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             size: import(".prisma/client").$Enums.Size | null;
+            quantity: number;
+            productId: string;
+            priceAtPurchase: import("@prisma/client/runtime/library").Decimal;
             orderId: string;
         })[];
     } & {
