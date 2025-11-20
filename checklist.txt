@@ -124,3 +124,25 @@ issues a new token if < 1 hour remains,
 keeps sessions alive smoothly.
 
 Would you like that added next (simple and cookie-based, no refresh table)?
+
+| Step                                                  | Backend / Frontend Action          | Behavior                          |
+| ----------------------------------------------------- | ---------------------------------- | --------------------------------- |
+| **1. Frontend Register Submit**                       | `/auth/register`                   | Shows loading → success screen    |
+| **2. Backend Validates Email (AbstractAPI)**          | Only continues if deliverable      | Prevents fake email DB entries    |
+| **3. Backend Creates User (verified = false)**        | Prisma write                       | Fine                              |
+| **4. Sends Mail with Token**                          | e.g., `/auth/verify?token=abc`     | ✅                                 |
+| **5. Frontend Shows “Check Inbox”**                   | `/auth/verify-pending`             | ✅                                 |
+| **6. User Clicks Verification Link**                  | `/auth/verify?token=abc` (Next.js) | Frontend calls backend verify API |
+| **7. Backend Verifies Token → Sets verified = true**  | Prisma update                      | ✅                                 |
+| **8. Redirect → “Verification Success” page → Login** | `/auth/verified-success`           | ✅ Clean UX                        |
+
+===============
+invalid email try refine as real world client flow
+user list with delete update Enhancements
+contact number Implement
+
+
+MEN =[ T-Shirt, Casual Shirt, Casual pant, Sweat T-Shirt, Track Pant, Joggers, Cargos, Co-Ords Set,  ]
+WOMEN=[ T-Shirt, casual Shirt, Casual Pant, Kurtis & Top, Western Wears, Sweat T-Shirt, Shorts, Joggers, Cargos, ]
+BOYS = [T-Shirt, Shirts, Shorts, Casual Pant, Track Pant, Co-Ords Set,  ]
+GIRLS = [ T-Shirt, Shorts, Top, Co-Ords Set, Western Wears, ]

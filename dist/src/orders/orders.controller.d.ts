@@ -18,15 +18,15 @@ export declare class OrdersController {
             product: {
                 id: string;
                 name: string;
-                createdAt: Date;
-                updatedAt: Date;
-                slug: string | null;
                 description: string | null;
+                gender: import(".prisma/client").$Enums.Gender | null;
+                slug: string | null;
+                categoryId: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
                 stock: number;
-                categoryId: string | null;
-                gender: import(".prisma/client").$Enums.Gender | null;
                 images: string[];
+                createdAt: Date;
+                updatedAt: Date;
             };
         } & {
             id: string;
@@ -57,16 +57,16 @@ export declare class OrdersController {
     checkPurpose(): Promise<({
         user: {
             id: string;
-            email: string;
-            phone: string | null;
-            verificationToken: string | null;
-            password: string;
             name: string | null;
-            role: import(".prisma/client").$Enums.Role;
-            isVerified: boolean;
-            verificationExpiry: Date | null;
             createdAt: Date;
             updatedAt: Date;
+            email: string;
+            password: string;
+            role: import(".prisma/client").$Enums.Role;
+            phone: string | null;
+            isVerified: boolean;
+            verificationToken: string | null;
+            verificationExpiry: Date | null;
         } | null;
         items: {
             id: string;
@@ -113,15 +113,15 @@ export declare class OrdersController {
             product: {
                 id: string;
                 name: string;
-                createdAt: Date;
-                updatedAt: Date;
-                slug: string | null;
                 description: string | null;
+                gender: import(".prisma/client").$Enums.Gender | null;
+                slug: string | null;
+                categoryId: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
                 stock: number;
-                categoryId: string | null;
-                gender: import(".prisma/client").$Enums.Gender | null;
                 images: string[];
+                createdAt: Date;
+                updatedAt: Date;
             };
         } & {
             id: string;

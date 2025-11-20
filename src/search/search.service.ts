@@ -61,7 +61,17 @@ export class SearchService implements OnModuleInit {
 
     const index = this.client.index(this.indexName);
     let exists = true;
-
+    // 🧠 Optional consistency check
+    // const count = await this.index
+    //   .getStats()
+    //   .then((s) => s.numberOfDocuments)
+    //   .catch(() => 0);
+    // if (count === 0) {
+    //   this.logger.warn(
+    //     '⚠️ Meilisearch index empty — auto-reindexing all products...',
+    //   );
+    //   await this.reindexAllProducts();
+    // }
     try {
       await index.getRawInfo();
       this.logger.log(`✅ Index '${this.indexName}' already exists.`);
@@ -154,34 +164,46 @@ export class SearchService implements OnModuleInit {
     this.logger.log(`✅ Reindexed ${docs.length} products`);
   }
 
-  // ➕ Add single product
+  // ➕ Add single product (safe)
   async addProduct(productId: string) {
-    const p = await this.prisma.product.findUnique({
-      where: { id: productId },
-      include: { category: true, sizes: true },
-    });
-    if (!p) return;
-
-    await this.index.addDocuments([this.serializeForSearch(p)]);
-    this.logger.log(`🔹 Indexed new product: ${p.name}`);
+    try {
+      const p = await this.prisma.product.findUnique({
+        where: { id: productId },
+        include: { category: true, sizes: true },
+      });
+      if (!p) return;
+      await this.index.addDocuments([this.serializeForSearch(p)]);
+      this.logger.log(`🔹 Indexed new product: ${p.name}`);
+    } catch (e: any) {
+      this.logger.warn(`⚠️ addProduct failed for ${productId}: ${e.message}`);
+    }
   }
 
-  // 🌀 Update product in index
+  // 🌀 Update product in index (safe)
   async updateProduct(productId: string) {
-    const p = await this.prisma.product.findUnique({
-      where: { id: productId },
-      include: { category: true, sizes: true },
-    });
-    if (!p) return;
-
-    await this.index.updateDocuments([this.serializeForSearch(p)]);
-    this.logger.log(`🌀 Updated product index: ${p.id}`);
+    try {
+      const p = await this.prisma.product.findUnique({
+        where: { id: productId },
+        include: { category: true, sizes: true },
+      });
+      if (!p) return;
+      await this.index.updateDocuments([this.serializeForSearch(p)]);
+      this.logger.log(`🌀 Updated product index: ${p.name}`);
+    } catch (e: any) {
+      this.logger.warn(
+        `⚠️ updateProduct failed for ${productId}: ${e.message}`,
+      );
+    }
   }
 
-  // ❌ Remove from index
+  // ❌ Remove from index (safe)
   async removeProduct(id: string) {
-    await this.index.deleteDocument(id);
-    this.logger.log(`🗑️ Removed product from Meilisearch: ${id}`);
+    try {
+      await this.index.deleteDocument(id);
+      this.logger.log(`🗑️ Removed product from Meilisearch: ${id}`);
+    } catch (e: any) {
+      this.logger.warn(`⚠️ removeProduct failed for ${id}: ${e.message}`);
+    }
   }
 
   // 🔍 Manual test search

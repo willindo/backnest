@@ -15,6 +15,7 @@ const config_1 = require("@nestjs/config");
 const jwt_strategy_1 = require("./jwt.strategy");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const mailer_service_1 = require("../common/mailer/mailer.service");
+const email_validation_service_1 = require("../common/email-validation/email-validation.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -30,7 +31,13 @@ exports.AuthModule = AuthModule = __decorate([
                 }),
             }),
         ],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, prisma_service_1.PrismaService, mailer_service_1.MailerService],
+        providers: [
+            auth_service_1.AuthService,
+            jwt_strategy_1.JwtStrategy,
+            prisma_service_1.PrismaService,
+            mailer_service_1.MailerService,
+            email_validation_service_1.EmailValidationService,
+        ],
         controllers: [auth_controller_1.AuthController],
     })
 ], AuthModule);

@@ -1,0 +1,16 @@
+ip a
+sudo systemctl restart NetworkManager
+sudo systemctl restart networking
+nmcli device status
+sudo dhclient -r =Renew IP address (for DHCP-based connection)
+sudo dhclient
+ip route
+ping -c 4 8.8.8.8 -> = test connectivity
+-> ping -c 4 google.com
+sudo rm /etc/resolv.conf  ->     =Reset /etc/resolv.conf (if ping by IP works but DNS fails)
+->   echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf ->ping -c 4 google.com
+Optional reset (safe full refresh) ---
+sudo netplan generate
+sudo netplan apply
+
+

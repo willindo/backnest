@@ -24,3 +24,4 @@ docker compose up -d db
 docker ps
 psql -h localhost -U postgres -d mono_commerce_dev
 npx prisma migrate dev --name init_dev_db
+

@@ -1,12 +1,15 @@
+import * as dotenv from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded, raw } from 'express';
 import cookieParser from 'cookie-parser';
-import { Request, Response, NextFunction } from 'express'; // ✅ optional for types
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  dotenv.config();
+  // const search = app.get(SearchService);
+  // await search.reindexAllProducts();
   const isProd = process.env.NODE_ENV === 'production';
   app.use(cookieParser());
   app.use(json({ limit: '1mb' }));

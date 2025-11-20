@@ -59,3 +59,5 @@ docker-compose.yml
 /src/generated
 # Ignore Meilisearch data
 data/meili_data/
+
+.env.*

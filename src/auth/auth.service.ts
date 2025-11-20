@@ -10,6 +10,7 @@ import { Response, CookieOptions } from 'express';
 import { RegisterDto, LoginDto } from './dto';
 import { MailerService } from '../common/mailer/mailer.service';
 import { randomBytes } from 'crypto';
+import { EmailValidationService } from '../common/email-validation/email-validation.service'; // ✅ added
 
 @Injectable()
 export class AuthService {
@@ -17,35 +18,68 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly mailer: MailerService,
+    private readonly emailValidator: EmailValidationService, // ✅ added
   ) {}
 
   // ------------------- REGISTER -------------------
+  // src/auth/auth.service.ts
   async register(dto: RegisterDto, res: Response) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-    if (existing) throw new BadRequestException('Email already in use');
+    // 1️⃣ Validate email via Abstract API
+    const isReal = await this.emailValidator.validate(dto.email);
+    if (!isReal)
+      throw new BadRequestException('Invalid or undeliverable email address.');
 
+    const email = dto.email.toLowerCase();
+
+    // 2️⃣ Check if user already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      if (!existingUser.isVerified) {
+        // Resend verification if still pending
+        await this.resendVerification(email);
+        throw new BadRequestException(
+          'Account exists but not verified. Verification email resent.',
+        );
+      }
+      throw new BadRequestException('Email already registered.');
+    }
+
+    // 3️⃣ Check if already pending verification
+    const existingPending = await this.prisma.pendingVerification.findUnique({
+      where: { email },
+    });
+
+    if (existingPending) {
+      // Update token & expiry
+      const token = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      await this.prisma.pendingVerification.update({
+        where: { email },
+        data: { token, expiresAt },
+      });
+      await this.mailer.sendVerificationEmail(email, token);
+      return { message: 'Verification email resent. Please check your inbox.' };
+    }
+
+    // 4️⃣ Create new pending verification record
     const hashed = await bcrypt.hash(dto.password, 10);
     const token = randomBytes(32).toString('hex');
-    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    const user = await this.prisma.user.create({
+    await this.prisma.pendingVerification.create({
       data: {
-        email: dto.email.toLowerCase(),
-        password: hashed,
+        email,
         name: dto.name,
-        isVerified: false,
-        verificationToken: token,
-        verificationExpiry: expiry,
+        password: hashed,
+        token,
+        expiresAt,
       },
     });
 
-    // Send verification email (non-blocking)
-    this.mailer.sendVerificationEmail(user.email, token).catch(console.error);
-
-    // Auto-login after registration
-    return this.login(user, res, { skipVerifyCheck: true });
+    await this.mailer.sendVerificationEmail(email, token);
+    return { message: 'Verification email sent. Please check your inbox.' };
   }
 
   // ------------------- LOGIN -------------------
@@ -60,6 +94,8 @@ export class AuthService {
 
     return user;
   }
+  // if (!opts?.skipVerifyCheck && !user.isVerified)
+  //   throw new BadRequestException('Please verify your email before login');
 
   async login(user: any, res: Response, opts?: { skipVerifyCheck?: boolean }) {
     const payload = { sub: user.id, email: user.email };
@@ -93,48 +129,80 @@ export class AuthService {
 
   // ------------------- VERIFY EMAIL -------------------
   async verifyEmail(token: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { verificationToken: token },
+    const pending = await this.prisma.pendingVerification.findUnique({
+      where: { token },
     });
 
-    if (!user) throw new BadRequestException('Invalid or expired token');
-    if (user.verificationExpiry && user.verificationExpiry < new Date()) {
-      throw new BadRequestException('Verification token expired');
+    if (!pending)
+      throw new BadRequestException('Invalid or expired verification token.');
+
+    if (pending.expiresAt < new Date()) {
+      await this.prisma.pendingVerification.delete({
+        where: { id: pending.id },
+      });
+      throw new BadRequestException(
+        'Verification token expired. Please re-register.',
+      );
     }
 
-    await this.prisma.user.update({
-      where: { id: user.id },
+    // 1️⃣ Check again no user exists already
+    const existing = await this.prisma.user.findUnique({
+      where: { email: pending.email },
+    });
+    if (existing) {
+      await this.prisma.pendingVerification.delete({
+        where: { id: pending.id },
+      });
+      return { message: 'Email already verified. You may now log in.' }; // ✅ instead of throw
+    }
+
+    // 2️⃣ Create real user record
+    await this.prisma.user.create({
       data: {
+        email: pending.email,
+        password: pending.password,
+        name: pending.name,
         isVerified: true,
-        verificationToken: null,
-        verificationExpiry: null,
       },
     });
+
+    // 3️⃣ Remove pending entry
+    await this.prisma.pendingVerification.delete({ where: { id: pending.id } });
 
     return { message: 'Email verified successfully. You may now log in.' };
   }
 
   // ------------------- RESEND VERIFICATION -------------------
   async resendVerification(email: string) {
+    const emailLower = email.toLowerCase();
+
+    // 1️⃣ Check user already verified?
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: emailLower },
     });
-    if (!user)
-      throw new BadRequestException('No account found with that email');
-    if (user.isVerified)
-      throw new BadRequestException('Email already verified');
+    if (user && user.isVerified)
+      throw new BadRequestException('Email already verified.');
+
+    // 2️⃣ Check pending entry
+    const pending = await this.prisma.pendingVerification.findUnique({
+      where: { email: emailLower },
+    });
+
+    if (!pending)
+      throw new BadRequestException(
+        'No pending verification found for this email.',
+      );
 
     const token = randomBytes(32).toString('hex');
-    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { verificationToken: token, verificationExpiry: expiry },
+    await this.prisma.pendingVerification.update({
+      where: { email: emailLower },
+      data: { token, expiresAt },
     });
 
-    await this.mailer.sendVerificationEmail(user.email, token);
-
-    return { message: 'Verification email resent. Please check your inbox.' };
+    await this.mailer.sendVerificationEmail(emailLower, token);
+    return { message: 'Verification email resent successfully.' };
   }
 
   // ------------------- LOGOUT -------------------

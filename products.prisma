@@ -1,0 +1,679 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== CORE ENUMS ====================
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+enum ProductGender {
+  MENS
+  WOMENS
+  UNISEX
+  BOYS
+  GIRLS
+  INFANTS_BOY
+  INFANTS_GIRL
+  INFANTS_UNISEX
+}
+
+enum AgeGroup {
+  NEWBORN      // 0-3 months
+  INFANT       // 3-12 months
+  TODDLER      // 1-3 years
+  CHILD        // 4-12 years
+  TEEN         // 13-17 years
+  ADULT        // 18+ years
+  PLUS_SIZE    // Extended sizes
+}
+
+enum PriceTier {
+  ECONOMY      // $0-20
+  BUDGET       // $20-50
+  STANDARD     // $50-100
+  PREMIUM      // $100-200
+  LUXURY       // $200-500
+  DESIGNER     // $500+
+}
+
+// ==================== CLOTHING CATEGORY SYSTEM ====================
+
+enum ClothingCategory {
+  TOPS
+  BOTTOMS
+  OUTERWEAR
+  FULL_BODY
+  UNDERWEAR
+  SPORTSWEAR
+  SWIMWEAR
+  SLEEPWEAR
+  TRADITIONAL
+  ACCESSORIES
+  FOOTWEAR
+}
+
+enum TopType {
+  // Casual
+  T_SHIRT
+  POLO_SHIRT
+  HENLEY_SHIRT
+  TANK_TOP
+  CAMISOLE
+  
+  // Formal
+  DRESS_SHIRT
+  BUTTON_DOWN
+  BLOUSE
+  TUNIC
+  
+  // Knits
+  SWEATER
+  HOODIE
+  SWEATSHIRT
+  CARDIGAN
+  JACKET_KNIT
+  
+  // Traditional Tops
+  KURTA
+  SHERWANI
+  KIMONO
+  THOBE
+  BOUROU
+}
+
+enum BottomType {
+  // Casual
+  JEANS
+  CARGO_PANTS
+  CHINOS
+  JOGGERS
+  LEGGINGS
+  
+  // Formal
+  DRESS_PANTS
+  TROUSERS
+  SLACKS
+  
+  // Shorts
+  CASUAL_SHORTS
+  DRESS_SHORTS
+  SPORTS_SHORTS
+  BERMUDA_SHORTS
+  
+  // Skirts
+  PENCIL_SKIRT
+  A_LINE_SKIRT
+  PLEATED_SKIRT
+  WRAP_SKIRT
+  MAXI_SKIRT
+  MINI_SKIRT
+  
+  // Traditional
+  DHOTI
+  LUNGI
+  SARONG
+  HAKAMA
+}
+
+enum OuterwearType {
+  // Light
+  JACKET
+  BLAZER
+  WINDBREAKER
+  VEST
+  BOMBER_JACKET
+  
+  // Heavy
+  COAT
+  OVERCOAT
+  TRENCH_COAT
+  PARKA
+  PUFFER_JACKET
+  
+  // Traditional
+  ACHKAN
+  NORAGI
+  PONCHO
+}
+
+enum FullBodyType {
+  // Western
+  DRESS
+  JUMPSUIT
+  ROMPER
+  OVERALLS
+  SUIT
+  
+  // Traditional
+  SAREE
+  LEHNGA
+  HANBOK
+  AO_DAI
+  KAFTAN
+  THAWB
+}
+
+enum UnderwearType {
+  BRIEFS
+  BOXERS
+  TRUNKS
+  BRA
+  PANTIES
+  SPORTS_BRA
+  THERMALS
+  SHAPEWEAR
+}
+
+enum SportswearType {
+  SPORTS_T_SHIRT
+  SPORTS_TANK
+  SPORTS_LEGGINGS
+  SPORTS_SHORTS
+  SPORTS_JACKET
+  TRACK_SUIT
+  GYM_WEAR
+  YOGA_WEAR
+  COMPRESSION_WEAR
+}
+
+enum SwimwearType {
+  SWIM_TRUNKS
+  SWIM_BRIEFS
+  BIKINI
+  ONE_PIECE
+  SWIM_DRESS
+  RASH_GUARD
+  BURKINI
+}
+
+enum SleepwearType {
+  PAJAMAS
+  NIGHTGOWN
+  NIGHTSHIRT
+  ROBE
+  SLEEP_SHORTS
+  SLEEP_PANTS
+}
+
+enum TraditionalType {
+  // Indian
+  KURTA_PAJAMA
+  SAREES
+  LEHENGAS
+  SALWAR_SUIT
+  ANARKALI
+  SHERWANI
+  
+  // East Asian
+  HANBOK
+  KIMONO
+  CHEONGSAM
+  HANFU
+  
+  // Middle Eastern
+  THOBE
+  ABAYA
+  JELLABIYA
+  
+  // African
+  DASHIKI
+  BOUROU
+  KANZU
+  
+  // Western Traditional
+  KILT
+  DIRNDL
+}
+
+enum AccessoryType {
+  HEADWEAR
+  SCARVES
+  GLOVES
+  BELTS
+  TIES
+  SOCKS
+  HAIR_ACCESSORIES
+  JEWELRY
+}
+
+enum FootwearType {
+  SNEAKERS
+  DRESS_SHOES
+  BOOTS
+  SANDALS
+  SLIPPERS
+  SPORTS_SHOES
+  TRADITIONAL_FOOTWEAR
+}
+
+// ==================== SIZE SYSTEMS ====================
+
+enum SizeSystem {
+  INTERNATIONAL
+  US
+  UK
+  EU
+  ASIAN
+  AUSTRALIAN
+}
+
+enum ClothingSizeType {
+  ALPHA_XS_XL      // XS, S, M, L, XL
+  NUMERIC_24_38    // 24, 26, 28, etc.
+  WAIST_INSEAM     // 32x32, 34x34
+  BRA_SIZE         // 32A, 34B, etc.
+  DRESS_SIZE       // 2, 4, 6, 8
+  SHOES_SIZE
+  UNISEX
+  PLUS_SIZE
+  MATERNITY
+  CUSTOM
+}
+
+enum ShoesSizeType {
+  US_SHOES
+  UK_SHOES
+  EU_SHOES
+  CM_SHOES
+  INCH_SHOES
+}
+
+// ==================== FABRIC & MATERIALS ====================
+
+enum MaterialType {
+  // Natural
+  COTTON
+  LINEN
+  SILK
+  WOOL
+  CASHMERE
+  DENIM
+  LEATHER
+  SUEDE
+  HEMP
+  JUTE
+  BAMBOO
+  
+  // Synthetic
+  POLYESTER
+  NYLON
+  RAYON
+  SPANDEX
+  ELASTANE
+  VISCOSE
+  ACRYLIC
+  POLYAMIDE
+  
+  // Blends
+  COTTON_POLYESTER
+  LINEN_COTTON
+  WOOL_SILK
+}
+
+enum FabricWeight {
+  ULTRA_LIGHT    // Sheer, voile
+  LIGHT          // Chiffon, lawn
+  MEDIUM         // Poplin, broadcloth
+  HEAVY          // Denim, canvas
+  ULTRA_HEAVY    // Leather, coating
+}
+
+enum FabricWeave {
+  PLAIN_WEAVE
+  TWILL_WEAVE
+  SATIN_WEAVE
+  KNIT
+  DENIM
+  JERSEY
+}
+
+// ==================== STYLE & FEATURES ====================
+
+enum SleeveType {
+  SLEEVELESS
+  CAP_SLEEVE
+  SHORT_SLEEVE
+  THREE_QUARTER
+  LONG_SLEEVE
+  RAGLAN_SLEEVE
+  PUFF_SLEEVE
+  BELL_SLEEVE
+}
+
+enum NecklineType {
+  CREW_NECK
+  V_NECK
+  COLLARED
+  HENLEY
+  SCOOP_NECK
+  BOAT_NECK
+  SQUARE_NECK
+  HALTER_NECK
+}
+
+enum FitType {
+  SKINNY
+  SLIM
+  REGULAR
+  RELAXED
+  LOOSE
+  OVERSIZED
+  TAILORED
+  A_LINE
+  EMPIRE
+}
+
+enum OccasionType {
+  CASUAL
+  FORMAL
+  BUSINESS
+  SPORTS
+  BEACH
+  PARTY
+  WEDDING
+  OUTDOOR
+  LOUNGE
+  TRAVEL
+}
+
+enum SeasonType {
+  SPRING
+  SUMMER
+  FALL
+  WINTER
+  ALL_SEASON
+  MONSOON
+  TRANSITIONAL
+}
+
+// ==================== MAIN MODELS ====================
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  image       String?
+  level       Int      @default(1) // 1: Main, 2: Sub, 3: Child
+  
+  // Hierarchical structure
+  parentId   String?
+  parent     Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryHierarchy")
+  
+  // Category type
+  clothingCategory ClothingCategory?
+  
+  products    Product[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  
+  // === BASIC IDENTITY ===
+  name        String
+  slug        String   @unique
+  description String
+  shortDescription String?
+  
+  // === CATEGORIZATION ===
+  clothingCategory ClothingCategory
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id])
+  
+  // === TYPE SPECIFICS ===
+  topType      TopType?
+  bottomType   BottomType?
+  outerwearType OuterwearType?
+  fullBodyType FullBodyType?
+  underwearType UnderwearType?
+  sportswearType SportswearType?
+  swimwearType SwimwearType?
+  sleepwearType SleepwearType?
+  traditionalType TraditionalType?
+  accessoryType AccessoryType?
+  footwearType FootwearType?
+  
+  // === DEMOGRAPHICS ===
+  gender       ProductGender
+  ageGroup     AgeGroup
+  isPlusSize   Boolean @default(false)
+  isMaternity  Boolean @default(false)
+  
+  // === PRICING ===
+  price        Decimal  @db.Decimal(10,2)
+  comparePrice Decimal? @db.Decimal(10,2)
+  costPrice    Decimal? @db.Decimal(10,2)
+  priceTier    PriceTier
+  currency     String   @default("USD")
+  
+  // === STYLE ATTRIBUTES ===
+  sleeveType   SleeveType?
+  necklineType NecklineType?
+  fitType      FitType?
+  occasions    OccasionType[]
+  seasons      SeasonType[]
+  
+  // === MATERIAL & CONSTRUCTION ===
+  materialComposition MaterialComposition[]
+  fabricWeight  FabricWeight?
+  fabricWeave   FabricWeave?
+  isSustainable Boolean @default(false)
+  isOrganic     Boolean @default(false)
+  
+  // === INVENTORY ===
+  trackInventory Boolean @default(true)
+  allowBackorder Boolean @default(false)
+  lowStockThreshold Int @default(5)
+  
+  // === STATUS ===
+  status       ProductStatus @default(DRAFT)
+  featured     Boolean @default(false)
+  publishedAt  DateTime?
+  
+  // === SEO & META ===
+  tags         String[]
+  seoTitle     String?
+  seoDescription String?
+  
+  // === RELATIONS ===
+  variants     ProductVariant[]
+  sizes        ProductSize[]
+  images       ProductImage[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@map("products")
+  @@index([slug])
+  @@index([clothingCategory])
+  @@index([gender])
+  @@index([priceTier])
+  @@index([status])
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Color & Pattern
+  colorName  String  // "Navy Blue"
+  colorCode  String? // "#003366"
+  pattern    String? // "Solid", "Striped", "Printed"
+  
+  // Material variant
+  materialComposition MaterialComposition[]
+  
+  // Pricing overrides
+  price      Decimal? @db.Decimal(10,2)
+  comparePrice Decimal? @db.Decimal(10,2)
+  
+  // Images for this variant
+  images     ProductImage[]
+  
+  sku        String? @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("product_variants")
+  @@unique([productId, colorName, pattern])
+}
+
+model ProductSize {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  // Size systems
+  sizeSystem    SizeSystem @default(INTERNATIONAL)
+  clothingSizeType ClothingSizeType?
+  shoesSizeType ShoesSizeType?
+  
+  // Size values
+  sizeValue     String  // "M", "32", "9", "32x32"
+  sizeOrder     Int     // For sorting
+  
+  // Measurements (if available)
+  chestWidth    Int?    // cm
+  waistWidth    Int?    // cm
+  hipWidth      Int?    // cm
+  inseamLength  Int?    // cm
+  sleeveLength  Int?    // cm
+  
+  // Inventory
+  stock         Int @default(0)
+  reserved      Int @default(0)
+  sku           String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("product_sizes")
+  @@unique([productId, variantId, sizeValue])
+}
+
+model MaterialComposition {
+  id        String @id @default(cuid())
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  material  MaterialType
+  percentage Int // 60, 40, etc.
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("material_compositions")
+  @@unique([productId, variantId, material])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  url       String
+  altText   String?
+  isPrimary Boolean @default(false)
+  order     Int @default(0)
+  
+  // Image type
+  imageType ImageType @default(PRODUCT)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("product_images")
+}
+
+enum ImageType {
+  PRODUCT
+  MODEL
+  LIFESTYLE
+  SIZE_GUIDE
+  DETAIL
+}
+
+// ==================== ATTRIBUTE CONFIGURATION ====================
+
+// For dynamic attribute management
+model Attribute {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        AttributeType
+  dataType    AttributeDataType
+  isRequired  Boolean  @default(false)
+  options     String[] // For SELECT type
+  
+  products    ProductAttribute[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("attributes")
+}
+
+model ProductAttribute {
+  id           String  @id @default(cuid())
+  productId    String
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  attributeId  String
+  attribute    Attribute @relation(fields: [attributeId], references: [id])
+  
+  stringValue  String?
+  numericValue Decimal? @db.Decimal(10,2)
+  booleanValue Boolean?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("product_attributes")
+  @@unique([productId, attributeId])
+}
+
+enum AttributeType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  SELECT
+  MULTISELECT
+  COLOR
+}
+
+enum AttributeDataType {
+  STRING
+  INTEGER
+  DECIMAL
+  BOOLEAN
+  JSON
+}

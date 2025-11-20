@@ -7,29 +7,29 @@ export declare class UsersController {
     getMe(req: Request): Promise<{
         user: {
             id: string;
-            email: string;
-            phone: string | null;
-            verificationToken: string | null;
             name: string | null;
-            role: import(".prisma/client").$Enums.Role;
-            isVerified: boolean;
-            verificationExpiry: Date | null;
             createdAt: Date;
             updatedAt: Date;
+            email: string;
+            role: import(".prisma/client").$Enums.Role;
+            phone: string | null;
+            isVerified: boolean;
+            verificationToken: string | null;
+            verificationExpiry: Date | null;
         };
     }>;
     findAll(page?: string, limit?: string, role?: string): Promise<{
         data: {
             id: string;
-            email: string;
-            phone: string | null;
-            verificationToken: string | null;
             name: string | null;
-            role: import(".prisma/client").$Enums.Role;
-            isVerified: boolean;
-            verificationExpiry: Date | null;
             createdAt: Date;
             updatedAt: Date;
+            email: string;
+            role: import(".prisma/client").$Enums.Role;
+            phone: string | null;
+            isVerified: boolean;
+            verificationToken: string | null;
+            verificationExpiry: Date | null;
         }[];
         total: number;
         page: number;
@@ -37,50 +37,50 @@ export declare class UsersController {
     }>;
     findOne(id: string, req: Request): Promise<{
         id: string;
-        email: string;
-        phone: string | null;
-        verificationToken: string | null;
         name: string | null;
-        role: import(".prisma/client").$Enums.Role;
-        isVerified: boolean;
-        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
+        isVerified: boolean;
+        verificationToken: string | null;
+        verificationExpiry: Date | null;
     }>;
     create(dto: CreateUserDto): Promise<{
         id: string;
-        email: string;
-        phone: string | null;
-        verificationToken: string | null;
         name: string | null;
-        role: import(".prisma/client").$Enums.Role;
-        isVerified: boolean;
-        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
+        isVerified: boolean;
+        verificationToken: string | null;
+        verificationExpiry: Date | null;
     }>;
     update(id: string, dto: UpdateUserDto, req: Request): Promise<{
         id: string;
-        email: string;
-        phone: string | null;
-        verificationToken: string | null;
         name: string | null;
-        role: import(".prisma/client").$Enums.Role;
-        isVerified: boolean;
-        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
+        isVerified: boolean;
+        verificationToken: string | null;
+        verificationExpiry: Date | null;
     }>;
     remove(id: string): Promise<{
         id: string;
-        email: string;
-        phone: string | null;
-        verificationToken: string | null;
         name: string | null;
-        role: import(".prisma/client").$Enums.Role;
-        isVerified: boolean;
-        verificationExpiry: Date | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
+        role: import(".prisma/client").$Enums.Role;
+        phone: string | null;
+        isVerified: boolean;
+        verificationToken: string | null;
+        verificationExpiry: Date | null;
     }>;
 }
