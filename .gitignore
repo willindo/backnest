@@ -61,3 +61,6 @@ docker-compose.yml
 data/meili_data/
 
 .env.*
+.env.development
+.env.example
+.env.production
